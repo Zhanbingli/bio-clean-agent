@@ -1,0 +1,58 @@
+# Bio Clean Agent
+
+An AI-assisted agent framework that plans and executes data cleaning tasks for sequencing, transcriptomics, and metabolomics datasets. The agent interprets high-level requests, chooses the appropriate cleaning pipeline, and orchestrates tool execution while keeping track of metadata and producing a summarized quality report.
+
+## Features
+- Dataset metadata schemas with validation for sequencing, transcriptomics, and metabolomics.
+- Modular cleaning pipelines with well-defined steps and hooks for external tooling.
+- Agent planner with preflight checks that maps user intents to pipeline runs and compiles human-readable summaries.
+- Optional Qwen-powered LLM planner with interactive chat UI.
+- Optional CLI built with Typer for quick experimentation, including dry-run simulation of external tools and Qwen-driven chat flows.
+
+## Getting Started
+1. Install dependencies (editable mode recommended):
+   ```bash
+   pip install -e .[llm]  # include `[llm]` to enable Qwen integration
+   ```
+2. Run the example scenario:
+   ```bash
+   python examples/run_agent.py examples/configs/sequencing.yaml --dry-run
+   ```
+   (Use `--dry-run` to skip executing external binaries during exploration.)
+
+3. Start the interactive planner:
+   ```bash
+   bio-clean-agent chat --model-path path/to/Qwen3 --dataset-config examples/configs/sequencing.yaml --dry-run
+   ```
+
+## Structure
+```
+src/bio_clean_agent/
+  agent.py              # Agent orchestration and planning logic
+  cli.py                # Typer CLI entry point
+  llm.py                # Qwen integration and planner utilities
+  dataspec/
+    models.py           # Dataset metadata schemas
+  pipelines/
+    base.py             # Pipeline abstractions
+    sequencing.py       # Sequencing data cleaning pipeline
+    transcriptomics.py  # Transcriptomics cleaning pipeline
+    metabolomics.py     # Metabolomics cleaning pipeline
+  ui/
+    session.py          # Rich-powered interactive chat session
+  utils/
+    logging.py          # Logging helpers
+    preflight.py        # Dataset preflight validation
+    reporting.py        # Report generation helpers
+examples/
+  run_agent.py          # Example usage script
+  configs/              # Sample configuration files (YAML)
+```
+
+## Extending
+- Add new pipelines by inheriting from `Pipeline` and defining ordered steps.
+- Register the pipeline with the agent via `agent.register_pipeline()` with matching `dataset_type`.
+- Provide tool adapters for your environment by overriding the `ToolExecutor` interface.
+
+## License
+MIT
