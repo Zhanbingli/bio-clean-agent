@@ -6,8 +6,9 @@ An AI-assisted agent framework that plans and executes data cleaning tasks for s
 - Dataset metadata schemas with validation for sequencing, transcriptomics, and metabolomics.
 - Modular cleaning pipelines with well-defined steps and hooks for external tooling.
 - Agent planner with preflight checks that maps user intents to pipeline runs and compiles human-readable summaries.
-- Optional Qwen-powered LLM planner with interactive chat UI.
-- Optional CLI built with Typer for quick experimentation, including dry-run simulation of external tools and Qwen-driven chat flows.
+- Pluggable LLM registry with auto-selection, conversation history, and JSON-repair for robust planning.
+- Rich-powered interactive UI with model switching, auto-execution toggles, and resilient command handling.
+- Typer CLI for quick experimentation, including dry-run simulation of external tools and planner-driven chat flows.
 
 ## Getting Started
 1. Install dependencies (editable mode recommended):
@@ -22,8 +23,11 @@ An AI-assisted agent framework that plans and executes data cleaning tasks for s
 
 3. Start the interactive planner:
    ```bash
-   bio-clean-agent chat --model-path path/to/Qwen3 --dataset-config examples/configs/sequencing.yaml --dry-run
+   bio-clean-agent models  # list available planner backends
+   bio-clean-agent chat --model qwen --model-path path/to/Qwen3 \
+       --dataset-config examples/configs/sequencing.yaml --dry-run
    ```
+   Inside the chat type `/help` to discover commands such as `/model`, `/auto`, `/plan`, and `/execute` for a smoother session.
 
 ## Structure
 ```

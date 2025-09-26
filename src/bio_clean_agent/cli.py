@@ -6,14 +6,21 @@ from typing import Optional
 import typer
 import yaml
 
-from .agent import AgentRequest, BioCleaningAgent, SimulatedToolExecutor
+from .agent import AgentPlan, AgentRequest, BioCleaningAgent, SimulatedToolExecutor
 from .pipelines import (
     MetabolomicsCleaningPipeline,
     SequencingCleaningPipeline,
     TranscriptomicsCleaningPipeline,
 )
 from .dataspec.models import load_dataset
-from .llm import QwenConfig, QwenLLM, QwenPlanner, SimulatedLLM
+from .llm import (
+    DEFAULT_LLM_REGISTRY,
+    GenerationConfig,
+    LLMPlanner,
+    LLMProviderError,
+    ModelConfig,
+    PlannerConfig,
+)
 from .ui.session import InteractiveSession
 from .utils.reporting import save_report
 
@@ -37,6 +44,23 @@ def build_agent(output_root: str | Path = "outputs", executor=None) -> BioCleani
     return agent
 
 
+def _print_plan(plan: AgentPlan) -> None:
+    typer.echo(f"Dataset {plan.dataset_id} ({plan.dataset_type})")
+    typer.echo(f"Pipeline: {plan.pipeline}")
+    typer.echo(f"Working directory: {plan.workdir}")
+    typer.echo("Steps:")
+    for step in plan.steps:
+        typer.echo(f"- {step.name}: {step.description}")
+    if plan.parameters:
+        typer.echo("Parameters:")
+        for key, value in plan.parameters.items():
+            typer.echo(f"- {key}: {value}")
+    if plan.warnings:
+        typer.echo("Warnings:")
+        for warning in plan.warnings:
+            typer.echo(f"- {warning}")
+
+
 def load_request(config_path: Path) -> AgentRequest:
     data = yaml.safe_load(config_path.read_text())
     if "dataset" not in data:
@@ -49,62 +73,83 @@ def load_request(config_path: Path) -> AgentRequest:
 
 
 @app.command()
+def models() -> None:
+    """List available planner models registered with the agent."""
+    registry = DEFAULT_LLM_REGISTRY
+    active_key = registry.describe().key
+    typer.echo("Available planner models:")
+    for descriptor in registry.available_models():
+        marker = "*" if descriptor.key == active_key else "-"
+        tags = f" tags={','.join(descriptor.tags)}" if descriptor.tags else ""
+        typer.echo(f"{marker} {descriptor.key} ({descriptor.provider}) -> {descriptor.name}{tags}")
+        typer.echo(f"    {descriptor.description}")
+
+
+@app.command()
 def plan(config: Path = typer.Argument(..., exists=True, readable=True)) -> None:
     """Print the plan inferred for a dataset cleaning request."""
     agent = build_agent()
     request = load_request(config)
     dataset = load_dataset(request.dataset["dataset_type"], request.dataset)
     plan_info = agent.plan(dataset, output_dir=request.output_dir, parameters=request.parameters)
-    typer.echo(f"Dataset {plan_info['dataset_id']} ({plan_info['dataset_type']})")
-    typer.echo(f"Pipeline: {plan_info['pipeline']}")
-    typer.echo(f"Working directory: {plan_info['workdir']}")
-    typer.echo("Steps:")
-    for step in plan_info['steps']:
-        typer.echo(f"- {step['name']}: {step['description']}")
-    if plan_info['parameters']:
-        typer.echo('Parameters:')
-        for key, value in plan_info['parameters'].items():
-            typer.echo(f"- {key}: {value}")
-    if plan_info['warnings']:
-        typer.echo('Warnings:')
-        for warning in plan_info['warnings']:
-            typer.echo(f"- {warning}")
+    _print_plan(plan_info)
 
 @app.command()
 def chat(
-    model_path: Optional[str] = typer.Option(None, help="Path or name of the Qwen model"),
-    device: str = typer.Option("auto", help="Device mapping for transformers"),
+    model_choice: str = typer.Option(
+        "auto",
+        "--model",
+        help="Model key from the registry (use `bio-clean-agent models` to list options).",
+    ),
+    model_path: Optional[str] = typer.Option(None, help="Optional HF model path for local providers"),
+    api_key: Optional[str] = typer.Option(None, help="API key for hosted providers (OpenAI, etc.)"),
+    device: str = typer.Option("auto", help="Device mapping for transformers backends"),
     dtype: Optional[str] = typer.Option(None, help="Optional torch dtype (float16, bfloat16, ...)"),
-    load_in_8bit: bool = typer.Option(False, "--load-8bit/--no-load-8bit", help="Load Qwen in 8bit mode"),
-    temperature: float = typer.Option(0.1, help="Sampling temperature for the planner"),
-    top_p: float = typer.Option(0.9, help="Top-p sampling for the planner"),
-    max_new_tokens: int = typer.Option(768, help="Maximum new tokens for each LLM response"),
+    load_in_8bit: bool = typer.Option(False, "--load-8bit/--no-load-8bit", help="Load transformer weights in 8-bit"),
+    temperature: float = typer.Option(0.1, help="Sampling temperature for planner generations"),
+    top_p: float = typer.Option(0.9, help="Top-p nucleus sampling for planner generations"),
+    max_new_tokens: int = typer.Option(768, help="Maximum new tokens for each planner response"),
     dataset_config: Optional[Path] = typer.Option(None, exists=True, readable=True, help="Optional YAML config for dataset execution"),
     auto_execute: bool = typer.Option(False, help="Automatically execute the planned pipeline when a dataset config is present"),
     dry_run: bool = typer.Option(False, help="Use simulated tool executor during chat execution"),
 ) -> None:
-    """Interactive TUI experience powered by Qwen planner."""
-    if model_path:
-        qwen_config = QwenConfig(
-            model_path=model_path,
-            device=device,
-            dtype=dtype,
-            max_new_tokens=max_new_tokens,
-            temperature=temperature,
-            top_p=top_p,
-            load_in_8bit=load_in_8bit,
-        )
-        llm = QwenLLM(qwen_config)
-    else:
-        typer.echo("No model_path provided. Falling back to simulated planner responses.")
-        llm = SimulatedLLM()
-    planner = QwenPlanner(llm)
+    """Interactive TUI experience with pluggable planner models."""
+    registry = DEFAULT_LLM_REGISTRY
+    model_options = {
+        "model_path": model_path,
+        "hf_model": model_path,
+        "device": device,
+        "dtype": dtype,
+        "load_in_8bit": load_in_8bit,
+        "temperature": temperature,
+        "top_p": top_p,
+        "max_new_tokens": max_new_tokens,
+    }
+    clean_options = {key: value for key, value in model_options.items() if value is not None}
+    try:
+        llm, descriptor = registry.create(ModelConfig(choice=model_choice, options=clean_options, api_key=api_key))
+    except LLMProviderError as exc:
+        typer.secho(f"Failed to initialise planner model: {exc}", fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+    planner_config = PlannerConfig(
+        generation=GenerationConfig(temperature=temperature, top_p=top_p, max_new_tokens=max_new_tokens)
+    )
+    planner = LLMPlanner(llm, config=planner_config, descriptor=descriptor)
+    typer.echo(f"Planner model: {descriptor.name} [{descriptor.key}]")
     executor = SimulatedToolExecutor() if dry_run else None
     agent = build_agent(executor=executor)
     payload = None
     if dataset_config:
         payload = yaml.safe_load(dataset_config.read_text())
-    session = InteractiveSession(agent=agent, planner=planner, dataset_payload=payload)
+    session = InteractiveSession(
+        agent=agent,
+        planner=planner,
+        dataset_payload=payload,
+        model_registry=registry,
+        model_options=dict(clean_options),
+        api_key=api_key,
+        active_model=descriptor,
+    )
     session.run(auto_execute=auto_execute)
 
 
@@ -122,21 +167,10 @@ def run(
     request = load_request(config)
     dataset = load_dataset(request.dataset["dataset_type"], request.dataset)
     plan_info = agent.plan(dataset, output_dir=request.output_dir, parameters=request.parameters)
-    typer.echo(f"Running {plan_info['pipeline']} for dataset {plan_info['dataset_id']}")
-    typer.echo("Steps:")
-    for step in plan_info['steps']:
-        typer.echo(f"- {step['name']}: {step['description']}")
-    if plan_info['parameters']:
-        typer.echo('Parameters:')
-        for key, value in plan_info['parameters'].items():
-            typer.echo(f"- {key}: {value}")
-    if plan_info['warnings']:
-        typer.echo('Warnings:')
-        for warning in plan_info['warnings']:
-            typer.echo(f"- {warning}")
+    _print_plan(plan_info)
     if dry_run:
         typer.echo('Dry run enabled: external commands will be simulated.')
-    report = agent.run(request)
+    report = agent.run(request, plan=plan_info)
     typer.echo(f"Pipeline success: {report.success}")
     for step in report.results:
         typer.echo(f"- {step.name}: {'ok' if step.success else 'failed'}")

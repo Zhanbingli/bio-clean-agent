@@ -1,0 +1,14 @@
+# configs/neg_height.yaml
+dataset:
+  dataset_id: neg_height
+  dataset_type: metabolomics
+  raw_paths:
+    - data/neg_height.csv        # 如果没转换就写你的 txt 路径
+  analytical_platform: LC-MS     # 可选
+  ion_mode: negative             # 可选
+output_dir: outputs/neg_height
+parameters:
+  qc_threshold: 0.2              # 缺失值过滤阈值，可按需要调整
+  knn_neighbors: 5               # KNN 插补的邻居数
+  normalization: pqn             # 或 log
+report_dir: reports

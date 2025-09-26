@@ -3,8 +3,17 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-from bio_clean_agent.agent import AgentRequest, BioCleaningAgent, SimulatedToolExecutor
-from bio_clean_agent.llm import QwenConfig, QwenLLM, QwenPlanner, SimulatedLLM
+from bio_clean_agent.agent import AgentPlan, AgentRequest, BioCleaningAgent, SimulatedToolExecutor
+from bio_clean_agent.llm import (
+    DEFAULT_LLM_REGISTRY,
+    GenerationConfig,
+    LLMPlanner,
+    LLMProviderError,
+    ModelConfig,
+    PlannerConfig,
+    PlannerOutput,
+    SimulatedLLM,
+)
 from bio_clean_agent.dataspec.models import load_dataset
 from bio_clean_agent.pipelines import (
     MetabolomicsCleaningPipeline,
@@ -52,51 +61,59 @@ def main(
     agent = build_agent(executor=executor)
     dataset = load_dataset(request.dataset["dataset_type"], request.dataset)
     plan_info = agent.plan(dataset, output_dir=request.output_dir, parameters=request.parameters)
-    planner_summary = None
+    planner_summary: Optional[PlannerOutput] = None
     if prompt:
+        registry = DEFAULT_LLM_REGISTRY
+        model_choice = "qwen" if model_path else "auto"
+        options = {
+            "temperature": temperature,
+            "top_p": top_p,
+            "max_new_tokens": max_new_tokens,
+        }
         if model_path:
-            qwen_config = QwenConfig(
-                model_path=model_path,
-                temperature=temperature,
-                top_p=top_p,
-                max_new_tokens=max_new_tokens,
-            )
-            llm = QwenLLM(qwen_config)
-        else:
+            options["model_path"] = model_path
+        try:
+            llm, descriptor = registry.create(ModelConfig(choice=model_choice, options=options))
+        except LLMProviderError:
             llm = SimulatedLLM()
-        planner = QwenPlanner(llm)
+            descriptor = None
+        planner_config = PlannerConfig(
+            generation=GenerationConfig(temperature=temperature, top_p=top_p, max_new_tokens=max_new_tokens)
+        )
+        planner = LLMPlanner(llm, config=planner_config, descriptor=descriptor)
         bundle = agent.plan_with_llm(prompt, planner, dataset_payload=payload)
-        planner_summary = bundle.get("planner")
-        if bundle.get("parameters"):
+        planner_summary = bundle.planner_output
+        if bundle.agent_plan:
+            plan_info = bundle.agent_plan
+        if bundle.merged_parameters:
             request = AgentRequest(
                 dataset=request.dataset,
                 output_dir=request.output_dir,
-                parameters=bundle["parameters"],
+                parameters=bundle.merged_parameters,
             )
-        plan_info = bundle.get("agent_plan", plan_info)
     if planner_summary:
-        print("Planner reasoning:", planner_summary.get("reasoning", ""))
-        actions = planner_summary.get("actions", [])
+        print("Planner reasoning:", planner_summary.reasoning)
+        actions = planner_summary.actions
         if actions:
             print("LLM suggested actions:")
             for idx, action in enumerate(actions, start=1):
                 print(f"  {idx}. {action.get('step')}: {action.get('description')}")
-    print(f"Dataset {plan_info['dataset_id']} ({plan_info['dataset_type']})")
-    print(f"Pipeline: {plan_info['pipeline']}")
+    print(f"Dataset {plan_info.dataset_id} ({plan_info.dataset_type})")
+    print(f"Pipeline: {plan_info.pipeline}")
     print("Planned steps:")
-    for step in plan_info["steps"]:
-        print(f"- {step['name']}: {step['description']}")
-    if plan_info["parameters"]:
+    for step in plan_info.steps:
+        print(f"- {step.name}: {step.description}")
+    if plan_info.parameters:
         print("Parameters:")
-        for key, value in plan_info["parameters"].items():
+        for key, value in plan_info.parameters.items():
             print(f"  - {key}: {value}")
-    if plan_info["warnings"]:
+    if plan_info.warnings:
         print("Warnings:")
-        for warning in plan_info["warnings"]:
+        for warning in plan_info.warnings:
             print(f"  - {warning}")
     if dry_run:
         print("Dry run enabled: external commands will be simulated.")
-    report = agent.run(request)
+    report = agent.run(request, plan=plan_info)
     print(f"Pipeline success: {report.success}")
     for step in report.results:
         print(f"  {step.name}: {'ok' if step.success else 'failed'}")
