@@ -8,6 +8,7 @@ import pandas as pd
 from sklearn.impute import KNNImputer
 
 from .base import Pipeline, PipelineStep, StepResult
+from ..utils.io import detect_delimiter, read_text_header
 
 
 class MetabolomicsCleaningPipeline(Pipeline):
@@ -38,7 +39,7 @@ class MetabolomicsCleaningPipeline(Pipeline):
         dataset = context["dataset"]
         table_path = dataset.raw_paths[0]
         try:
-            df = pd.read_csv(table_path, index_col=0)
+            df = self._read_table(table_path)
         except Exception as exc:
             return StepResult(name="load_table", success=False, error=str(exc))
         context.setdefault("frames", {})["intensity"] = df
@@ -98,3 +99,12 @@ class MetabolomicsCleaningPipeline(Pipeline):
         matrix.to_csv(out_path)
         context.setdefault("products", {})["metabolomics_table"] = str(out_path)
         return StepResult(name="export", success=True, details={"path": str(out_path)})
+
+    def _read_table(self, table_path: str | Path) -> pd.DataFrame:
+        try:
+            df = pd.read_csv(table_path, index_col=0)
+        except Exception:
+            header = read_text_header(table_path)
+            delimiter = detect_delimiter(header, fallback=",")
+            df = pd.read_csv(table_path, index_col=0, sep=delimiter)
+        return df

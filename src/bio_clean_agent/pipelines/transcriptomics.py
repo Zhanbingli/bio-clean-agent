@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from .base import Pipeline, PipelineStep, StepResult
+from ..utils.io import detect_delimiter, read_text_header
 
 
 class TranscriptomicsCleaningPipeline(Pipeline):
@@ -39,7 +40,12 @@ class TranscriptomicsCleaningPipeline(Pipeline):
         try:
             df = pd.read_csv(matrix_path, index_col=0)
         except Exception as exc:
-            return StepResult(name="load_matrix", success=False, error=str(exc))
+            header = read_text_header(matrix_path)
+            delimiter = detect_delimiter(header, fallback=",")
+            try:
+                df = pd.read_csv(matrix_path, index_col=0, sep=delimiter)
+            except Exception as retry_exc:
+                return StepResult(name="load_matrix", success=False, error=str(retry_exc))
         context.setdefault("frames", {})["counts"] = df
         return StepResult(name="load_matrix", success=True, details={"shape": df.shape})
 

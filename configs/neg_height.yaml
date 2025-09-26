@@ -1,0 +1,11 @@
+dataset:
+  dataset_id: neg_height
+  dataset_type: metabolomics
+  raw_paths:
+  - /Users/lizhanbing12/ai-agent/neg_height.csv
+  analytical_platform: LC-MS
+output_dir: /Users/lizhanbing12/ai-agent/outputs/neg_height
+report_dir: /Users/lizhanbing12/ai-agent/reports
+parameters:
+  qc_threshold: 0.2
+  normalization: pqn

@@ -9,6 +9,7 @@ An AI-assisted agent framework that plans and executes data cleaning tasks for s
 - Pluggable LLM registry with auto-selection, conversation history, and JSON-repair for robust planning.
 - Rich-powered interactive UI with model switching, auto-execution toggles, and resilient command handling.
 - Typer CLI for quick experimentation, including dry-run simulation of external tools and planner-driven chat flows.
+- Guided onboarding with `bio-clean-agent init` and a VS Code helper extension for new users.
 
 ## Getting Started
 1. Install dependencies (editable mode recommended):
@@ -28,6 +29,15 @@ An AI-assisted agent framework that plans and executes data cleaning tasks for s
        --dataset-config examples/configs/sequencing.yaml --dry-run
    ```
    Inside the chat type `/help` to discover commands such as `/model`, `/auto`, `/plan`, and `/execute` for a smoother session.
+
+4. Scaffold a dataset config via the wizard:
+   ```bash
+   bio-clean-agent init path/to/dataset
+   ```
+   The wizard guesses the dataset type, suggests parameters, and writes a ready-to-use YAML configuration.
+
+5. Want a GUI entry point? Install the helper extension under `tools/vscode/bio-clean-agent-helper` and run
+   **Bio Clean Agent: Create Dataset Config** from the VS Code Command Palette.
 
 ## Structure
 ```

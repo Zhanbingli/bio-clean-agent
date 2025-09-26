@@ -1,0 +1,47 @@
+{
+  "name": "bio-clean-agent-helper",
+  "displayName": "Bio Clean Agent Helper",
+  "description": "Guided commands and quick actions for the Bio Clean Agent project.",
+  "version": "0.1.0",
+  "publisher": "bio-clean-agent",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:bioCleanAgent.startWizard",
+    "onCommand:bioCleanAgent.openDocs",
+    "onWorkspaceContains:pyproject.toml"
+  ],
+  "main": "extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "bioCleanAgent.startWizard",
+        "title": "Bio Clean Agent: Create Dataset Config"
+      },
+      {
+        "command": "bioCleanAgent.openDocs",
+        "title": "Bio Clean Agent: Open Quickstart"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "bioCleanAgent.startWizard",
+          "when": "resourceLangId == python"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "lint": "echo 'No lint configured'",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.104.0"
+  }
+}

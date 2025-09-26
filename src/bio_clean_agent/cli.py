@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional
 
 import typer
 import yaml
@@ -12,7 +12,7 @@ from .pipelines import (
     SequencingCleaningPipeline,
     TranscriptomicsCleaningPipeline,
 )
-from .dataspec.models import load_dataset
+from .dataspec.models import DATASET_MODEL_MAP, load_dataset
 from .llm import (
     DEFAULT_LLM_REGISTRY,
     GenerationConfig,
@@ -23,6 +23,7 @@ from .llm import (
 )
 from .ui.session import InteractiveSession
 from .utils.reporting import save_report
+from .wizard import build_context, guess_dataset_type, suggest_parameters
 
 app = typer.Typer(help="Agent CLI for cleaning omics datasets")
 
@@ -61,6 +62,17 @@ def _print_plan(plan: AgentPlan) -> None:
             typer.echo(f"- {warning}")
 
 
+def _collect_dataset_files(path: Path) -> list[Path]:
+    if path.is_file():
+        return [path]
+    if not path.exists():
+        raise typer.BadParameter(f"Path not found: {path}")
+    files = sorted([item for item in path.iterdir() if item.is_file()])
+    if not files:
+        raise typer.BadParameter(f"No files detected in directory {path}")
+    return files
+
+
 def load_request(config_path: Path) -> AgentRequest:
     data = yaml.safe_load(config_path.read_text())
     if "dataset" not in data:
@@ -70,6 +82,110 @@ def load_request(config_path: Path) -> AgentRequest:
         output_dir=data.get("output_dir"),
         parameters=data.get("parameters"),
     )
+
+
+@app.command()
+def init(
+    dataset_path: Path = typer.Argument(..., help="Path to a dataset file or directory"),
+    dataset_type: Optional[str] = typer.Option(None, help="Dataset type override"),
+    dataset_id: Optional[str] = typer.Option(None, help="Identifier for the dataset"),
+    output_dir: Optional[Path] = typer.Option(None, help="Directory for pipeline outputs"),
+    report_dir: Optional[Path] = typer.Option(None, help="Directory for generated reports"),
+    config_path: Optional[Path] = typer.Option(None, help="Where to write the YAML configuration"),
+    force: bool = typer.Option(False, "--force", help="Overwrite existing configuration"),
+) -> None:
+    """Interactive helper to scaffold a dataset configuration file."""
+
+    files = _collect_dataset_files(dataset_path)
+    guess = guess_dataset_type(files)
+    allowed_types = sorted(DATASET_MODEL_MAP)
+
+    target_type = dataset_type or guess
+    if target_type not in allowed_types:
+        prompt_default = guess or "sequencing"
+        target_type = typer.prompt(
+            "Dataset type",
+            default=prompt_default,
+        ).strip().lower()
+    if target_type not in allowed_types:
+        raise typer.BadParameter(f"Unsupported dataset type '{target_type}'. Choose from {allowed_types}")
+
+    suggested_id = dataset_id or files[0].stem.replace(" ", "_")
+    target_id = typer.prompt("Dataset identifier", default=suggested_id).strip()
+
+    default_output = output_dir or Path("outputs") / target_id
+    out_dir = Path(typer.prompt("Output directory", default=str(default_output))).expanduser().resolve()
+
+    if report_dir is not None:
+        report_path = Path(report_dir).expanduser().resolve() if report_dir else None
+    else:
+        report_default = str(Path("reports"))
+        report_input = typer.prompt(
+            "Report directory (leave blank to skip)",
+            default=report_default,
+        )
+        report_path = Path(report_input).expanduser().resolve() if report_input else None
+
+    extras: Dict[str, object] = {}
+    if target_type == "sequencing":
+        read_type_default = "paired" if len(files) == 2 else "single"
+        read_type = typer.prompt("Read type (single/paired)", default=read_type_default)
+        extras["read_type"] = read_type.lower()
+        platform = typer.prompt("Sequencing platform (optional)", default="")
+        if platform:
+            extras["platform"] = platform
+    elif target_type == "transcriptomics":
+        matrix_format = typer.prompt("Matrix format (counts/tpm/fpkm)", default="counts")
+        extras["matrix_format"] = matrix_format
+        annotation = typer.prompt("Gene annotation file (optional)", default="")
+        if annotation:
+            extras["gene_annotation"] = annotation
+    elif target_type == "metabolomics":
+        platform = typer.prompt("Analytical platform (optional)", default="")
+        if platform:
+            extras["analytical_platform"] = platform
+        ion_mode = typer.prompt("Ion mode (positive/negative, optional)", default="")
+        if ion_mode:
+            extras["ion_mode"] = ion_mode.lower()
+
+    parameters = suggest_parameters(target_type, str(files[0]))
+    typer.echo("Suggested parameters:")
+    for key, value in parameters.items():
+        typer.echo(f"  - {key}: {value}")
+    if typer.confirm("Would you like to edit parameters?", default=False):
+        while True:
+            key = typer.prompt("Parameter key (blank to finish)", default="")
+            if not key:
+                break
+            value = typer.prompt(f"Value for {key}")
+            parameters[key] = value
+
+    context = build_context(
+        dataset_paths=[str(path) for path in files],
+        dataset_type=target_type,
+        dataset_id=target_id,
+        output_dir=out_dir,
+        report_dir=report_path,
+        parameters={k: v for k, v in parameters.items() if k != "detected_delimiter"},
+        extras=extras,
+    )
+
+    destination = (config_path or Path("configs") / f"{target_id}.yaml").expanduser().resolve()
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if destination.exists() and not force:
+        raise typer.BadParameter(f"Config {destination} already exists. Use --force to overwrite.")
+
+    with destination.open("w", encoding="utf-8") as handle:
+        yaml.safe_dump(context.to_dict(), handle, sort_keys=False, allow_unicode=True)
+
+    typer.echo(f"Configuration written to {destination}")
+
+    delimiter = parameters.get("detected_delimiter")
+    if delimiter and delimiter not in {None, ","}:
+        typer.echo(
+            "⚠️  Detected a non-comma delimiter. Pipelines will auto-detect, but converting"
+            " the table to CSV can improve stability."
+        )
 
 
 @app.command()
