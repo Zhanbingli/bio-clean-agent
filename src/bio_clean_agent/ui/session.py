@@ -76,13 +76,27 @@ class InteractiveSession:
 
     def _render_header(self) -> None:
         model_label = f"{self.active_model.name} [{self.active_model.key}]" if self.active_model else "<unbound>"
-        auto_label = "on" if self._auto_execute_flag else "off"
-        body = (
-            "Type a cleaning goal to generate a plan. Commands start with '/'."
-            "\nUse /help for available commands and /exit to leave the session."
-            f"\nModel: {model_label} | Auto-execute: {auto_label}"
-        )
-        self.console.print(Panel(body, title="Bio Clean Agent", subtitle="Ready"))
+        auto_label = "[green]ON[/]" if self._auto_execute_flag else "[dim]OFF[/]"
+
+        from rich.text import Text
+        from rich import box
+
+        header = Text()
+        header.append("🤖 AI-Powered Data Cleaning Agent\n\n", style="bold cyan")
+        header.append("Model: ", style="dim")
+        header.append(f"{model_label}\n", style="yellow")
+        header.append("Auto-execute: ", style="dim")
+        header.append(auto_label)
+        header.append("\n\n")
+        header.append("💡 Type your data cleaning goal in natural language\n", style="dim")
+        header.append("⌨️  Commands: /help, /models, /auto, /execute, /exit", style="dim italic")
+
+        self.console.print(Panel(
+            header,
+            title="[bold]Bio Clean Agent[/]",
+            border_style="cyan",
+            box=box.ROUNDED
+        ))
 
     def _handle_goal(self, message: str) -> None:
         try:
@@ -151,76 +165,80 @@ class InteractiveSession:
         self.console.print(table)
 
     def _display_plan(self, plan: PlannerOutput) -> None:
-        table = Table(title="LLM Plan", show_lines=True)
-        table.add_column("Field")
-        table.add_column("Detail")
+        from rich import box
+
+        # Main plan info
+        table = Table(title="🧠 AI Generated Plan", show_lines=True, box=box.ROUNDED, border_style="blue")
+        table.add_column("Field", style="cyan")
+        table.add_column("Detail", style="white")
         if plan.diagnostics.metadata.get("model"):
             model_meta = plan.diagnostics.metadata["model"]
-            table.add_row("model", f"{model_meta.get('name')} ({model_meta.get('key')})")
-        table.add_row("dataset_type", plan.dataset_type)
-        table.add_row("dataset_id", plan.dataset_id or "<unspecified>")
-        table.add_row("reasoning", plan.reasoning)
+            table.add_row("Model", f"{model_meta.get('name')} ({model_meta.get('key')})")
+        table.add_row("Dataset Type", f"[yellow]{plan.dataset_type}[/]")
+        table.add_row("Dataset ID", plan.dataset_id or "[dim]<unspecified>[/]")
+        table.add_row("Reasoning", f"[italic]{plan.reasoning}[/]")
         self.console.print(table)
 
-        param_table = Table(show_header=True, title="Suggested Parameters")
-        param_table.add_column("Key")
-        param_table.add_column("Value")
+        # Parameters
         if plan.parameters:
+            param_table = Table(title="⚙️  Suggested Parameters", box=box.SIMPLE, border_style="green")
+            param_table.add_column("Parameter", style="green")
+            param_table.add_column("Value", style="yellow")
             for key, value in plan.parameters.items():
                 param_table.add_row(str(key), str(value))
-        else:
-            param_table.add_row("-", "<none>")
-        self.console.print(param_table)
+            self.console.print(param_table)
 
-        action_table = Table(title="Planned Actions")
-        action_table.add_column("#")
-        action_table.add_column("Step")
-        action_table.add_column("Description")
+        # Actions
+        action_table = Table(title="📋 Planned Actions", box=box.ROUNDED, border_style="magenta")
+        action_table.add_column("#", style="cyan", width=3)
+        action_table.add_column("Step", style="magenta")
+        action_table.add_column("Description", style="dim")
         if plan.actions:
             for idx, action in enumerate(plan.actions, start=1):
                 action_table.add_row(str(idx), str(action.get("step", "?")), str(action.get("description", "")))
         else:
-            action_table.add_row("-", "-", "<none>")
+            action_table.add_row("-", "-", "[dim]<none>[/]")
         self.console.print(action_table)
 
+        # Warnings
         if plan.diagnostics.warnings:
-            warn_table = Table(title="Planner Warnings")
-            warn_table.add_column("Warning")
+            warn_table = Table(title="⚠️  Warnings", box=box.ROUNDED, border_style="yellow")
+            warn_table.add_column("Warning", style="yellow")
             for warning in plan.diagnostics.warnings:
                 warn_table.add_row(str(warning))
             self.console.print(warn_table)
 
     def _display_agent_plan(self, plan: AgentPlan) -> None:
-        table = Table(title="Agent Pipeline Plan", show_lines=True)
-        table.add_column("Field")
-        table.add_column("Detail")
-        table.add_row("dataset_id", plan.dataset_id)
-        table.add_row("dataset_type", plan.dataset_type)
-        table.add_row("pipeline", plan.pipeline)
-        table.add_row("workdir", plan.workdir)
+        from rich import box
+
+        table = Table(title="🔧 Pipeline Execution Plan", show_lines=True, box=box.ROUNDED, border_style="blue")
+        table.add_column("Field", style="cyan")
+        table.add_column("Detail", style="white")
+        table.add_row("Dataset ID", f"[yellow]{plan.dataset_id}[/]")
+        table.add_row("Dataset Type", f"[yellow]{plan.dataset_type}[/]")
+        table.add_row("Pipeline", f"[magenta]{plan.pipeline}[/]")
+        table.add_row("Working Directory", f"[dim]{plan.workdir}[/]")
         self.console.print(table)
 
-        param_table = Table(title="Merged Parameters")
-        param_table.add_column("Key")
-        param_table.add_column("Value")
         if plan.parameters:
+            param_table = Table(title="⚙️  Final Parameters", box=box.SIMPLE, border_style="green")
+            param_table.add_column("Parameter", style="green")
+            param_table.add_column("Value", style="yellow")
             for key, value in plan.parameters.items():
                 param_table.add_row(str(key), str(value))
-        else:
-            param_table.add_row("-", "<none>")
-        self.console.print(param_table)
+            self.console.print(param_table)
 
-        step_table = Table(title="Pipeline Steps")
-        step_table.add_column("#")
-        step_table.add_column("Name")
-        step_table.add_column("Description")
+        step_table = Table(title="📋 Pipeline Steps", box=box.ROUNDED, border_style="magenta")
+        step_table.add_column("#", style="cyan", width=3)
+        step_table.add_column("Name", style="magenta")
+        step_table.add_column("Description", style="dim")
         for idx, step in enumerate(plan.steps, start=1):
             step_table.add_row(str(idx), step.name, step.description)
         self.console.print(step_table)
 
         if plan.warnings:
-            warn_table = Table(title="Preflight Warnings")
-            warn_table.add_column("Warning")
+            warn_table = Table(title="⚠️  Preflight Warnings", box=box.ROUNDED, border_style="yellow")
+            warn_table.add_column("Warning", style="yellow")
             for warning in plan.warnings:
                 warn_table.add_row(str(warning))
             self.console.print(warn_table)
@@ -265,32 +283,42 @@ class InteractiveSession:
         return None
 
     def _display_report(self, report: PipelineReport) -> None:
-        status = "success" if report.success else "failure"
-        self.console.print(Panel(f"Pipeline {report.pipeline_name} finished with {status}", title="Execution"))
-        table = Table(title="Step Results")
-        table.add_column("Step")
-        table.add_column("Success")
-        table.add_column("Details")
-        table.add_column("Error")
+        from rich import box
+
+        status = "[bold green]✅ SUCCESS[/]" if report.success else "[bold red]❌ FAILED[/]"
+        self.console.print(Panel(
+            f"Pipeline: [cyan]{report.pipeline_name}[/]\nStatus: {status}",
+            title="🎯 Execution Result",
+            border_style="green" if report.success else "red",
+            box=box.ROUNDED
+        ))
+
+        table = Table(title="📊 Step Results", box=box.ROUNDED, border_style="blue")
+        table.add_column("Step", style="cyan")
+        table.add_column("Status", style="white", width=8)
+        table.add_column("Details", style="dim")
+        table.add_column("Error", style="red")
         for step in report.results:
             table.add_row(
                 step.name,
-                "✅" if step.success else "❌",
+                "[green]✅ OK[/]" if step.success else "[red]❌ FAIL[/]",
                 json_safe(step.details),
                 step.error or "",
             )
         self.console.print(table)
 
     def _list_models(self) -> None:
+        from rich import box
+
         if not self.model_registry:
             self.console.print("[yellow]Model registry is unavailable in this session.")
             return
-        table = Table(title="Registered Planner Models")
-        table.add_column("Active")
-        table.add_column("Key")
-        table.add_column("Provider")
-        table.add_column("Name")
-        table.add_column("Tags")
+        table = Table(title="🤖 Available Planner Models", box=box.ROUNDED, border_style="cyan")
+        table.add_column("Active", width=6)
+        table.add_column("Key", style="yellow")
+        table.add_column("Provider", style="cyan")
+        table.add_column("Name", style="white")
+        table.add_column("Tags", style="dim")
         for descriptor in self.model_registry.available_models():
             active = "✅" if self.active_model and descriptor.key == self.active_model.key else ""
             tags = ", ".join(descriptor.tags) if descriptor.tags else "-"
@@ -331,16 +359,17 @@ class InteractiveSession:
         self._render_header()
 
     def _show_help(self) -> None:
-        table = Table(title="Session Commands")
-        table.add_column("Command")
-        table.add_column("Description")
+        from rich import box
+        table = Table(title="💡 Available Commands", box=box.ROUNDED, border_style="cyan")
+        table.add_column("Command", style="yellow", no_wrap=True)
+        table.add_column("Description", style="dim")
         table.add_row("/help", "Show this help message")
         table.add_row("/models", "List available planner models")
-        table.add_row("/model <key> [k=v]", "Switch planner model with optional overrides")
+        table.add_row("/model <key>", "Switch to a different planner model")
         table.add_row("/auto [on|off]", "Toggle automatic execution after planning")
         table.add_row("/plan", "Show the last computed agent plan")
-        table.add_row("/execute", "Execute the last agent plan if available")
-        table.add_row("/exit", "Exit the interactive session")
+        table.add_row("/execute", "Execute the last agent plan")
+        table.add_row("/exit or /quit", "Exit the interactive session")
         self.console.print(table)
 
     def _show_last_agent_plan(self) -> None:

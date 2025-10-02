@@ -217,11 +217,7 @@ def chat(
         "--model",
         help="Model key from the registry (use `bio-clean-agent models` to list options).",
     ),
-    model_path: Optional[str] = typer.Option(None, help="Optional HF model path for local providers"),
-    api_key: Optional[str] = typer.Option(None, help="API key for hosted providers (OpenAI, etc.)"),
-    device: str = typer.Option("auto", help="Device mapping for transformers backends"),
-    dtype: Optional[str] = typer.Option(None, help="Optional torch dtype (float16, bfloat16, ...)"),
-    load_in_8bit: bool = typer.Option(False, "--load-8bit/--no-load-8bit", help="Load transformer weights in 8-bit"),
+    api_key: Optional[str] = typer.Option(None, help="API key for OpenAI (or set OPENAI_API_KEY env var)"),
     temperature: float = typer.Option(0.1, help="Sampling temperature for planner generations"),
     top_p: float = typer.Option(0.9, help="Top-p nucleus sampling for planner generations"),
     max_new_tokens: int = typer.Option(768, help="Maximum new tokens for each planner response"),
@@ -229,14 +225,9 @@ def chat(
     auto_execute: bool = typer.Option(False, help="Automatically execute the planned pipeline when a dataset config is present"),
     dry_run: bool = typer.Option(False, help="Use simulated tool executor during chat execution"),
 ) -> None:
-    """Interactive TUI experience with pluggable planner models."""
+    """Interactive TUI experience with AI planner models."""
     registry = DEFAULT_LLM_REGISTRY
     model_options = {
-        "model_path": model_path,
-        "hf_model": model_path,
-        "device": device,
-        "dtype": dtype,
-        "load_in_8bit": load_in_8bit,
         "temperature": temperature,
         "top_p": top_p,
         "max_new_tokens": max_new_tokens,

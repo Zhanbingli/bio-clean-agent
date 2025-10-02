@@ -1,0 +1,20 @@
+# Example configuration for Bio Clean Agent
+# This demonstrates how to configure a dataset cleaning pipeline
+
+dataset:
+  dataset_id: example_dataset
+  dataset_type: sequencing  # Options: sequencing, transcriptomics, metabolomics
+  raw_paths:
+    - data/sample_R1.fastq.gz
+    - data/sample_R2.fastq.gz
+  read_type: paired  # Options: single, paired
+  platform: Illumina  # Optional: sequencing platform
+
+output_dir: outputs/example_dataset
+
+parameters:
+  quality_threshold: 20
+  adapter_sequence: AGATCGGAAGAGCACACGTCTGAACTCCAGTCA
+  allow_missing_inputs: true  # Allow dry-run without actual data files
+
+report_dir: reports

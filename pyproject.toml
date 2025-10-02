@@ -17,12 +17,7 @@ dependencies = [
 
 [project.optional-dependencies]
 seq = ["biopython>=1.81"]
-llm = [
-    "transformers>=4.38",
-    "accelerate>=0.27",
-    "torch>=2.1",
-    "optimum>=1.16"
-]
+openai = ["openai>=1.0"]
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]

@@ -89,10 +89,6 @@ class LLMRegistry:
         return instance, descriptor
 
     def _resolve_auto_choice(self, config: ModelConfig) -> str:
-        if config.options.get("model_path") or config.options.get("hf_model"):
-            for descriptor in self._descriptors.values():
-                if descriptor.provider == "qwen":
-                    return descriptor.key
         if config.api_key or os.getenv("OPENAI_API_KEY"):
             for descriptor in self._descriptors.values():
                 if descriptor.provider == "openai":
@@ -103,51 +99,27 @@ class LLMRegistry:
 
 
 def build_default_registry() -> LLMRegistry:
+    """Build registry with simulated (default) and optional OpenAI providers."""
     registry = LLMRegistry()
 
+    # Simulated provider - always available for testing
     registry.register(
         ModelDescriptor(
             key="simulated",
             provider="simulated",
-            name="Deterministic canned planner",
-            description="Returns a static plan useful for testing and offline demos.",
+            name="Simulated Planner",
+            description="Returns static plans for testing and demos.",
             tags=("offline", "fast"),
             recommended=True,
         ),
         lambda cfg: SimulatedLLM(cfg.options.get("canned_response")),
     )
 
-    def qwen_builder(cfg: ModelConfig) -> LLMInterface:
-        model_path = cfg.options.get("model_path") or cfg.options.get("hf_model")
-        if not model_path:
-            raise LLMProviderError("Qwen model requires 'model_path' in options")
-        qwen_cfg = QwenConfig(
-            model_path=model_path,
-            device=cfg.options.get("device", "auto"),
-            dtype=cfg.options.get("dtype"),
-            max_new_tokens=int(cfg.options.get("max_new_tokens", 1024)),
-            temperature=float(cfg.options.get("temperature", 0.1)),
-            top_p=float(cfg.options.get("top_p", 0.9)),
-            use_flash_attention=bool(cfg.options.get("use_flash_attention", True)),
-            load_in_8bit=bool(cfg.options.get("load_in_8bit", False)),
-        )
-        return QwenLLM(qwen_cfg)
-
-    registry.register(
-        ModelDescriptor(
-            key="qwen",
-            provider="qwen",
-            name="Qwen (transformers) backend",
-            description="Runs Qwen chat models locally through transformers.",
-            tags=("local", "high-quality"),
-        ),
-        qwen_builder,
-    )
-
+    # OpenAI provider - only if credentials available
     def openai_builder(cfg: ModelConfig) -> LLMInterface:
         api_key = cfg.api_key or cfg.options.get("api_key") or os.getenv("OPENAI_API_KEY")
         if not api_key:
-            raise LLMProviderError("OpenAI backend requires an API key")
+            raise LLMProviderError("OpenAI backend requires an API key (set OPENAI_API_KEY env var)")
         model_name = cfg.options.get("model") or cfg.options.get("model_name") or "gpt-4o-mini"
         return OpenAIChatLLM(
             model=model_name,
@@ -161,9 +133,9 @@ def build_default_registry() -> LLMRegistry:
         ModelDescriptor(
             key="openai",
             provider="openai",
-            name="OpenAI Chat Completions",
-            description="Hosted OpenAI GPT models via the official API.",
-            tags=("cloud", "json-mode"),
+            name="OpenAI GPT",
+            description="Cloud-based GPT models via OpenAI API.",
+            tags=("cloud", "high-quality"),
         ),
         openai_builder,
     )
@@ -176,79 +148,6 @@ class LLMInterface(Protocol):
 
     def generate(self, messages: List[Dict[str, str]], **kwargs: Any) -> str:
         ...
-
-
-class QwenNotAvailableError(RuntimeError):
-    """Raised when the Qwen backend cannot be initialised."""
-
-
-@dataclass
-class QwenConfig:
-    model_path: str
-    device: str = "auto"
-    dtype: Optional[str] = None
-    max_new_tokens: int = 1024
-    temperature: float = 0.1
-    top_p: float = 0.9
-    use_flash_attention: bool = True
-    load_in_8bit: bool = False
-
-
-class QwenLLM:
-    """Wrapper around Qwen3 chat models via `transformers`."""
-
-    def __init__(self, config: QwenConfig):
-        try:
-            from transformers import AutoModelForCausalLM, AutoTokenizer
-        except ImportError as exc:  # pragma: no cover - dependency guard
-            raise QwenNotAvailableError(
-                "transformers is required to load Qwen models. Install with `pip install bio-clean-agent[llm]`."
-            ) from exc
-
-        self._logger = get_logger(__name__)
-        self.config = config
-        tokenizer_kwargs: Dict[str, Any] = {}
-        model_kwargs: Dict[str, Any] = {"trust_remote_code": True}
-
-        if config.load_in_8bit:
-            model_kwargs["load_in_8bit"] = True
-        if config.dtype:
-            import torch  # type: ignore
-
-            dtype_map = {
-                "float16": "float16",
-                "bfloat16": "bfloat16",
-                "float32": "float32",
-            }
-            dtype_string = dtype_map.get(config.dtype, config.dtype)
-            model_kwargs["torch_dtype"] = getattr(torch, dtype_string)
-        if config.use_flash_attention:
-            model_kwargs["attn_implementation"] = "flash_attention_2"
-
-        self.tokenizer = AutoTokenizer.from_pretrained(config.model_path, **tokenizer_kwargs)
-        self.model = AutoModelForCausalLM.from_pretrained(
-            config.model_path,
-            device_map=config.device,
-            **model_kwargs,
-        )
-        self.model.eval()
-        self._logger.debug("Loaded Qwen model from %s", config.model_path)
-
-    def generate(self, messages: List[Dict[str, str]], **kwargs: Any) -> str:
-        from torch import no_grad
-
-        generate_kwargs = {
-            "max_new_tokens": kwargs.get("max_new_tokens", self.config.max_new_tokens),
-            "temperature": kwargs.get("temperature", self.config.temperature),
-            "top_p": kwargs.get("top_p", self.config.top_p),
-            "do_sample": kwargs.get("do_sample", False),
-        }
-        input_ids = self.tokenizer.apply_chat_template(messages, return_tensors="pt").to(self.model.device)
-        with no_grad():
-            output_ids = self.model.generate(input_ids, **generate_kwargs)
-        result = self.tokenizer.decode(output_ids[0][input_ids.shape[-1]:], skip_special_tokens=True)
-        self._logger.debug("Qwen response: %s", result[:200])
-        return result
 
 
 class SimulatedLLM:
@@ -529,15 +428,6 @@ class LLMPlanner:
         return messages
 
 
-class QwenPlanner(LLMPlanner):
-    """Backward compatible alias for planners configured with Qwen models."""
-
-    SYSTEM_PROMPT = DEFAULT_SYSTEM_PROMPT
-
-    def __init__(self, llm: LLMInterface, config: Optional[PlannerConfig] = None):
-        super().__init__(llm, config=config or PlannerConfig())
-
-
 DEFAULT_LLM_REGISTRY = build_default_registry()
 
 
@@ -553,10 +443,6 @@ __all__ = [
     "PlannerConfig",
     "PlannerDiagnostics",
     "PlannerOutput",
-    "QwenConfig",
-    "QwenLLM",
-    "QwenNotAvailableError",
-    "QwenPlanner",
     "SimulatedLLM",
     "build_default_registry",
     "DEFAULT_LLM_REGISTRY",

@@ -1,72 +1,120 @@
-# Bio Clean Agent
+# 🧬 Bio Clean Agent
 
-An AI-assisted agent framework that plans and executes data cleaning tasks for sequencing, transcriptomics, and metabolomics datasets. The agent interprets high-level requests, chooses the appropriate cleaning pipeline, and orchestrates tool execution while keeping track of metadata and producing a summarized quality report.
+An intelligent AI-powered agent for cleaning and processing biological data. The agent uses natural language understanding to plan and execute data cleaning pipelines for sequencing, transcriptomics, and metabolomics datasets.
 
-## Features
-- Dataset metadata schemas with validation for sequencing, transcriptomics, and metabolomics.
-- Modular cleaning pipelines with well-defined steps and hooks for external tooling.
-- Agent planner with preflight checks that maps user intents to pipeline runs and compiles human-readable summaries.
-- Pluggable LLM registry with auto-selection, conversation history, and JSON-repair for robust planning.
-- Rich-powered interactive UI with model switching, auto-execution toggles, and resilient command handling.
-- Typer CLI for quick experimentation, including dry-run simulation of external tools and planner-driven chat flows.
-- Guided onboarding with `bio-clean-agent init` and a VS Code helper extension for new users.
+## ✨ Features
 
-## Getting Started
-1. Install dependencies (editable mode recommended):
+- 🤖 **AI-Powered Planning** - Natural language interface to describe data cleaning goals
+- 🔄 **Multiple Data Types** - Support for sequencing, transcriptomics, and metabolomics datasets
+- 📊 **Interactive TUI** - Modern Rich-based terminal UI with beautiful formatting
+- 🔌 **Pluggable LLM Support** - Works with OpenAI GPT models or simulated mode (no API key needed)
+- ⚡ **Dry-Run Mode** - Test pipelines without executing external tools
+- 📝 **Auto-Generated Reports** - Comprehensive quality reports for all cleaning operations
+- 🎯 **Type-Safe** - Built with Pydantic for robust data validation
+
+## 🚀 Quick Start
+
+### Installation
+
+```bash
+# Basic installation
+pip install -e .
+
+# With OpenAI support (optional)
+pip install -e .[openai]
+```
+
+### Basic Usage
+
+1. **Interactive Chat Mode** (Recommended)
    ```bash
-   pip install -e .[llm]  # include `[llm]` to enable Qwen integration
+   # Start with simulated planner (no API key needed)
+   bio-clean-agent chat --dataset-config examples/configs/example.yaml --dry-run
+
+   # With OpenAI GPT (requires API key)
+   export OPENAI_API_KEY="your-api-key"
+   bio-clean-agent chat --model openai --dataset-config examples/configs/example.yaml
    ```
-2. Run the example scenario:
+
+2. **Direct Pipeline Execution**
    ```bash
-   python examples/run_agent.py examples/configs/sequencing.yaml --dry-run
-   ```
-   (Use `--dry-run` to skip executing external binaries during exploration.)
+   # Run a pipeline with dry-run mode
+   bio-clean-agent run examples/configs/example.yaml --dry-run
 
-3. Start the interactive planner:
+   # View available models
+   bio-clean-agent models
+   ```
+
+3. **Create New Dataset Configuration**
    ```bash
-   bio-clean-agent models  # list available planner backends
-   bio-clean-agent chat --model qwen --model-path path/to/Qwen3 \
-       --dataset-config examples/configs/sequencing.yaml --dry-run
+   bio-clean-agent init path/to/your/dataset
    ```
-   Inside the chat type `/help` to discover commands such as `/model`, `/auto`, `/plan`, and `/execute` for a smoother session.
+   The wizard will guide you through creating a configuration file.
 
-4. Scaffold a dataset config via the wizard:
-   ```bash
-   bio-clean-agent init path/to/dataset
-   ```
-   The wizard guesses the dataset type, suggests parameters, and writes a ready-to-use YAML configuration.
+## 💬 Interactive Chat Commands
 
-5. Want a GUI entry point? Install the helper extension under `tools/vscode/bio-clean-agent-helper` and run
-   **Bio Clean Agent: Create Dataset Config** from the VS Code Command Palette.
+Once in chat mode, you can use these commands:
 
-## Structure
+- `/help` - Show all available commands
+- `/models` - List available AI models
+- `/model <key>` - Switch to a different model
+- `/auto [on|off]` - Toggle automatic pipeline execution
+- `/plan` - Show the last generated plan
+- `/execute` - Execute the current plan
+- `/exit` or `/quit` - Exit the session
+
+## 📁 Project Structure
+
 ```
 src/bio_clean_agent/
-  agent.py              # Agent orchestration and planning logic
-  cli.py                # Typer CLI entry point
-  llm.py                # Qwen integration and planner utilities
-  dataspec/
-    models.py           # Dataset metadata schemas
-  pipelines/
-    base.py             # Pipeline abstractions
-    sequencing.py       # Sequencing data cleaning pipeline
-    transcriptomics.py  # Transcriptomics cleaning pipeline
-    metabolomics.py     # Metabolomics cleaning pipeline
-  ui/
-    session.py          # Rich-powered interactive chat session
-  utils/
-    logging.py          # Logging helpers
-    preflight.py        # Dataset preflight validation
-    reporting.py        # Report generation helpers
-examples/
-  run_agent.py          # Example usage script
-  configs/              # Sample configuration files (YAML)
+  ├── agent.py              # Core agent orchestration
+  ├── cli.py                # CLI commands
+  ├── llm.py                # LLM integration (OpenAI, Simulated)
+  ├── wizard.py             # Configuration wizard
+  ├── dataspec/
+  │   └── models.py         # Dataset schemas (Pydantic)
+  ├── pipelines/
+  │   ├── base.py           # Pipeline base classes
+  │   ├── sequencing.py     # Sequencing pipeline
+  │   ├── transcriptomics.py
+  │   └── metabolomics.py
+  ├── ui/
+  │   └── session.py        # Interactive chat session
+  └── utils/
+      ├── logging.py
+      ├── preflight.py      # Data validation
+      └── reporting.py      # Report generation
 ```
 
-## Extending
-- Add new pipelines by inheriting from `Pipeline` and defining ordered steps.
-- Register the pipeline with the agent via `agent.register_pipeline()` with matching `dataset_type`.
-- Provide tool adapters for your environment by overriding the `ToolExecutor` interface.
+## 🔧 Configuration
 
-## License
+Example YAML configuration:
+
+```yaml
+dataset:
+  dataset_id: my_dataset
+  dataset_type: sequencing
+  raw_paths:
+    - data/sample_R1.fastq.gz
+    - data/sample_R2.fastq.gz
+  read_type: paired
+
+output_dir: outputs/my_dataset
+
+parameters:
+  quality_threshold: 20
+  adapter_sequence: AGATCGGAAGAGC...
+
+report_dir: reports
+```
+
+## 🛠️ Extending
+
+- **Add Pipelines**: Inherit from `Pipeline` and define steps
+- **Custom Tools**: Override the `ToolExecutor` interface
+- **New Data Types**: Add schemas in `dataspec/models.py`
+- **LLM Providers**: Register new providers in `llm.py`
+
+## 📝 License
+
 MIT

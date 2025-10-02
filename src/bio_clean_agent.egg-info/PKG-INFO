@@ -14,8 +14,5 @@ Requires-Dist: rich>=13.0
 Requires-Dist: PyYAML>=6.0
 Provides-Extra: seq
 Requires-Dist: biopython>=1.81; extra == "seq"
-Provides-Extra: llm
-Requires-Dist: transformers>=4.38; extra == "llm"
-Requires-Dist: accelerate>=0.27; extra == "llm"
-Requires-Dist: torch>=2.1; extra == "llm"
-Requires-Dist: optimum>=1.16; extra == "llm"
+Provides-Extra: openai
+Requires-Dist: openai>=1.0; extra == "openai"
