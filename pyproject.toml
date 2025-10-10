@@ -18,6 +18,12 @@ dependencies = [
 [project.optional-dependencies]
 seq = ["biopython>=1.81"]
 openai = ["openai>=1.0"]
+api = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "python-multipart>=0.0.6",
+    "websockets>=12.0",
+]
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]
