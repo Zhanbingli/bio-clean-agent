@@ -43,6 +43,9 @@ class ClinicalTrialHandler:
         if self.df is None:
             raise ValueError("Data not loaded. Call load_data() first.")
 
+        if len(self.df) == 0:
+            raise ValueError("DataFrame is empty. Cannot generate profile for empty data.")
+
         profile = {
             "total_records": len(self.df),
             "total_columns": len(self.df.columns),

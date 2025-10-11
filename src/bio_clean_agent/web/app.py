@@ -134,10 +134,18 @@ def create_app() -> FastAPI:
         try:
             # Load data
             handler = ClinicalTrialHandler(file_path)
-            handler.load_data()
+            df = handler.load_data()
+
+            # Check if data was loaded successfully
+            if df is None or len(df) == 0:
+                raise HTTPException(400, "File is empty or could not be loaded")
 
             # Profile data
             profile = handler.profile_data()
+
+            # Validate profile has required fields
+            if not profile or "total_records" not in profile:
+                raise HTTPException(500, "Failed to generate data profile")
 
             # Detect issues
             issues = handler.detect_issues()
@@ -472,7 +480,18 @@ def get_simple_html() -> str:
                 const analyzeRes = await fetch(`/analyze?file_id=${uploadData.file_id}`, {
                     method: 'POST'
                 });
+
+                if (!analyzeRes.ok) {
+                    const error = await analyzeRes.json();
+                    throw new Error(error.detail || 'Analysis failed');
+                }
+
                 const analysis = await analyzeRes.json();
+
+                // Validate response structure
+                if (!analysis || !analysis.profile || typeof analysis.profile.total_records === 'undefined') {
+                    throw new Error('Invalid analysis response from server');
+                }
 
                 // Show results
                 resultDiv.innerHTML = `
