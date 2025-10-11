@@ -1,9 +1,23 @@
 [project]
 name = "bio-clean-agent"
-version = "0.1.0"
-description = "AI-assisted pipelines for sequencing, transcriptomics, and metabolomics data cleaning"
+version = "0.3.0"
+description = "Intelligent AI-powered agent for cleaning and processing biological and medical data with scientific knowledge base"
 authors = [{name = "Researcher"}]
 requires-python = ">=3.10"
+readme = "README.md"
+license = {text = "MIT"}
+keywords = ["bioinformatics", "data-cleaning", "medical-data", "genomics", "clinical-trials", "AI"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
 dependencies = [
     "pydantic>=2.6",
     "pandas>=2.0",
@@ -12,7 +26,7 @@ dependencies = [
     "scikit-learn>=1.3",
     "typer>=0.9",
     "rich>=13.0",
-    "PyYAML>=6.0"
+    "PyYAML>=6.0",
 ]
 
 [project.optional-dependencies]
@@ -23,6 +37,16 @@ api = [
     "uvicorn[standard]>=0.24.0",
     "python-multipart>=0.0.6",
     "websockets>=12.0",
+]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "black>=23.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0",
+]
+all = [
+    "bio-clean-agent[seq,openai,api,dev]",
 ]
 
 [build-system]

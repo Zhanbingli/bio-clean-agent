@@ -2,9 +2,13 @@
 
 An intelligent AI-powered agent for cleaning and processing biological and medical data. **This is NOT a chatbot** - it's a task-oriented system with **scientific knowledge** and **intelligent reasoning**.
 
+[![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-0.3.0-orange.svg)](CHANGES.md)
+
 > **New in v0.3:** 🧠 **Scientific Knowledge Base** + **Intelligent Planning**
 > The agent now has 50+ medical standards with citations and 70+ evidence-based cleaning strategies.
-> See [ADVANCED_CAPABILITIES.md](ADVANCED_CAPABILITIES.md) for the complete guide.
+> See [docs/ADVANCED_CAPABILITIES.md](docs/ADVANCED_CAPABILITIES.md) for the complete guide.
 
 ## ✨ Features
 
@@ -33,15 +37,28 @@ An intelligent AI-powered agent for cleaning and processing biological and medic
 ### Installation
 
 ```bash
-# Basic installation
-pip install -e .
+# Clone the repository
+git clone https://github.com/yourusername/bio-clean-agent.git
+cd bio-clean-agent
 
-# With API server (recommended for medical data)
+# Install with API support (recommended)
 pip install -e .[api]
 
-# Full installation
-pip install -e .[api,openai,seq]
+# Or install with all features
+pip install -e .[all]
 ```
+
+### Web Interface (Easiest Way!)
+
+```bash
+# Start the web server
+python start_web.py
+
+# Open in browser
+# http://localhost:8080
+```
+
+For detailed web interface usage, see [docs/WEB_INTERFACE_GUIDE.md](docs/WEB_INTERFACE_GUIDE.md)
 
 ### Usage Modes
 
@@ -112,7 +129,7 @@ bio-clean-agent chat --dataset-config examples/configs/example.yaml --dry-run
 
 **For medical data cleaning, use the task-oriented API!**
 
-See [TASK_ORIENTED_DESIGN.md](TASK_ORIENTED_DESIGN.md) for detailed comparison and rationale.
+See [docs/TASK_ORIENTED_DESIGN.md](docs/TASK_ORIENTED_DESIGN.md) for detailed comparison and rationale.
 
 ## 📁 Project Structure
 
@@ -190,6 +207,37 @@ report_dir: reports
 - **New Data Types**: Add schemas in `dataspec/models.py`
 - **LLM Providers**: Register new providers in `llm.py`
 
+## 📚 Documentation
+
+### Getting Started
+- **[START_HERE.md](START_HERE.md)** - Quick start guide (Chinese)
+- **[QUICKSTART.md](QUICKSTART.md)** - Comprehensive quick start
+
+### User Guides
+- **[docs/WEB_INTERFACE_GUIDE.md](docs/WEB_INTERFACE_GUIDE.md)** - Complete web interface guide
+- **[docs/ADVANCED_CAPABILITIES.md](docs/ADVANCED_CAPABILITIES.md)** - Advanced features and scientific knowledge base
+
+### Developer Resources
+- **[docs/TASK_ORIENTED_DESIGN.md](docs/TASK_ORIENTED_DESIGN.md)** - Design philosophy and architecture
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - How to contribute to the project
+- **[CHANGES.md](CHANGES.md)** - Version history and changelog
+
+### Maintenance
+- **[PROJECT_OPTIMIZATION.md](PROJECT_OPTIMIZATION.md)** - Optimization summary
+- **[Makefile](Makefile)** - Common development commands (`make help`)
+
+## 🤝 Contributing
+
+Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) for details on:
+- Setting up the development environment
+- Code style guidelines
+- Submitting pull requests
+- Reporting issues
+
 ## 📝 License
 
-MIT
+MIT - See [LICENSE](LICENSE) file for details
+
+## 🙏 Acknowledgments
+
+Built with modern Python tools and libraries including FastAPI, Pydantic, and Rich.

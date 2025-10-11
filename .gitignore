@@ -27,6 +27,15 @@ outputs/
 reports/
 *.log
 
+# Uploads and temporary files
+uploads/
+test_data.csv
+*.tmp
+
 # OS
 .DS_Store
 Thumbs.db
+
+# Documentation builds
+docs/_build/
+site/
