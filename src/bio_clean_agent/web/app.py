@@ -17,6 +17,16 @@ from ..api.jobs import DataType, JobPriority, JobRequest, get_job_manager
 from ..knowledge import EvidenceBase, MedicalStandards, ValidationRules
 from ..medical import ClinicalTrialHandler
 from ..planning import SmartPlanner
+from ..utils.security import (
+    get_allowed_origins,
+    validate_file_upload,
+    sanitize_filename,
+    generate_secure_id,
+    SecurityError,
+)
+from ..utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 # Store active WebSocket connections
 active_connections: Dict[str, WebSocket] = {}
@@ -40,13 +50,15 @@ def create_app() -> FastAPI:
         version="0.3.0",
     )
 
-    # Enable CORS for frontend
+    # Enable CORS for frontend with secure defaults
+    # Override via ALLOWED_ORIGINS environment variable in production
+    allowed_origins = get_allowed_origins()
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # In production, specify exact origins
+        allow_origins=allowed_origins,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["Content-Type", "Authorization", "Accept"],
     )
 
     # Create upload directory
@@ -80,43 +92,68 @@ def create_app() -> FastAPI:
 
     @app.post("/upload")
     async def upload_file(file: UploadFile = File(...)):
-        """Upload data file."""
+        """Upload data file with security validation."""
         if not file.filename:
             raise HTTPException(400, "No file provided")
 
-        # Generate unique filename
-        file_id = str(uuid.uuid4())
-        ext = Path(file.filename).suffix
+        # Read file content
+        content = await file.read()
+        file_size = len(content)
+
+        # Security validation
+        try:
+            validate_file_upload(file.filename, file_size)
+        except SecurityError as e:
+            logger.warning(f"File upload rejected: {e}")
+            raise HTTPException(400, str(e))
+
+        # Sanitize filename
+        safe_filename = sanitize_filename(file.filename)
+        ext = Path(safe_filename).suffix
+
+        # Generate unique filename with secure ID
+        file_id = generate_secure_id()
         save_path = UPLOAD_DIR / f"{file_id}{ext}"
 
         # Save file
-        content = await file.read()
-        save_path.write_bytes(content)
-
-        # Quick preview
         try:
-            if ext in {".csv", ".txt"}:
+            save_path.write_bytes(content)
+            logger.info(f"File uploaded successfully: {file_id} ({file_size} bytes)")
+        except Exception as e:
+            logger.error(f"Failed to save uploaded file: {e}")
+            raise HTTPException(500, "Failed to save file")
+
+        # Quick preview with better error handling
+        preview = None
+        try:
+            if ext in {".csv", ".txt", ".tsv"}:
                 import pandas as pd
                 import numpy as np
 
-                df = pd.read_csv(save_path)
-                # Replace NaN with None for JSON serialization
-                sample_data = df.head(5).replace({np.nan: None}).to_dict("records")
-                preview = {
-                    "rows": len(df),
-                    "columns": len(df.columns),
-                    "column_names": list(df.columns),
-                    "sample": sample_data,
-                }
-            else:
-                preview = None
-        except Exception:
-            preview = None
+                # Read with safety limits
+                df = pd.read_csv(save_path, nrows=1000)  # Limit preview to first 1000 rows
+
+                if df is not None and len(df) > 0:
+                    # Replace NaN with None for JSON serialization
+                    sample_data = df.head(5).replace({np.nan: None}).to_dict("records")
+                    preview = {
+                        "rows": len(df),
+                        "columns": len(df.columns),
+                        "column_names": list(df.columns),
+                        "sample": sample_data,
+                    }
+        except pd.errors.EmptyDataError:
+            logger.warning(f"Empty data file uploaded: {file_id}")
+        except pd.errors.ParserError as e:
+            logger.warning(f"Failed to parse file for preview: {e}")
+        except Exception as e:
+            logger.warning(f"Preview generation failed: {e}")
 
         return {
             "file_id": file_id,
-            "filename": file.filename,
-            "size": len(content),
+            "filename": safe_filename,
+            "original_filename": file.filename,
+            "size": file_size,
             "path": str(save_path),
             "preview": preview,
         }
@@ -217,8 +254,18 @@ def create_app() -> FastAPI:
                 "recommendations": recommendations,
             }
 
+        except ValueError as e:
+            logger.error(f"Analysis validation error for {file_id}: {e}")
+            raise HTTPException(400, f"Invalid data: {str(e)}")
+        except FileNotFoundError:
+            logger.error(f"File not found for analysis: {file_id}")
+            raise HTTPException(404, "File not found")
+        except pd.errors.ParserError as e:
+            logger.error(f"Failed to parse file {file_id}: {e}")
+            raise HTTPException(400, "Unable to parse file. Please check file format.")
         except Exception as e:
-            raise HTTPException(500, f"Analysis failed: {str(e)}")
+            logger.exception(f"Unexpected error during analysis of {file_id}")
+            raise HTTPException(500, "Analysis failed due to internal error")
 
     @app.post("/jobs")
     async def submit_job(submission: JobSubmission, file_id: str):

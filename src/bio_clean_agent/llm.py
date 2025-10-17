@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Deque, Dict, List, Optional, Protocol, Tuple
 
 from .utils.logging import get_logger
+from .utils.security import mask_sensitive_value, validate_api_key_format
 
 
 class LLMProviderError(RuntimeError):
@@ -120,6 +121,12 @@ def build_default_registry() -> LLMRegistry:
         api_key = cfg.api_key or cfg.options.get("api_key") or os.getenv("OPENAI_API_KEY")
         if not api_key:
             raise LLMProviderError("OpenAI backend requires an API key (set OPENAI_API_KEY env var)")
+
+        # Validate API key format
+        if not validate_api_key_format(api_key):
+            logger = get_logger(__name__)
+            logger.warning("API key format validation failed - may be invalid or test key")
+
         model_name = cfg.options.get("model") or cfg.options.get("model_name") or "gpt-4o-mini"
         return OpenAIChatLLM(
             model=model_name,
@@ -186,6 +193,10 @@ class OpenAIChatLLM:
         self.model = model
         self._request_timeout = request_timeout
         self.extra_options = extra_options or {}
+        # Log initialization without exposing API key
+        self._logger.info(
+            f"OpenAI LLM initialized: model={model}, key={mask_sensitive_value(api_key)}"
+        )
         try:
             from openai import OpenAI  # type: ignore
         except ImportError:

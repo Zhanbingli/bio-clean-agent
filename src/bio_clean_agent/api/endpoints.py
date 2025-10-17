@@ -18,6 +18,7 @@ from .jobs import (
     JobStatus,
     get_job_manager,
 )
+from ..utils.security import get_allowed_origins
 
 
 def create_api_app() -> Any:
@@ -34,13 +35,16 @@ def create_api_app() -> Any:
         version="0.1.0"
     )
 
-    # Enable CORS for web dashboard
+    # Enable CORS for web dashboard with secure defaults
+    # Override via ALLOWED_ORIGINS environment variable in production
+    # Example: ALLOWED_ORIGINS="https://app.example.com,https://dashboard.example.com"
+    allowed_origins = get_allowed_origins()
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # Configure appropriately for production
+        allow_origins=allowed_origins,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["Content-Type", "Authorization", "Accept"],
     )
 
     job_manager = get_job_manager()
