@@ -38,7 +38,7 @@ An intelligent AI-powered agent for cleaning and processing biological and medic
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/bio-clean-agent.git
+git clone https://github.com/zhanbingli/bio-clean-agent.git
 cd bio-clean-agent
 
 # Install with API support (recommended)
