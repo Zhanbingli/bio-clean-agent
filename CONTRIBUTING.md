@@ -59,7 +59,20 @@ make install-all
 pip install -e .[all]
 ```
 
-### 4. 验证安装
+### 4. 安装 pre-commit hooks（推荐）
+
+```bash
+# 安装 pre-commit
+pip install pre-commit
+
+# 安装 git hooks
+pre-commit install
+
+# 测试 hooks
+pre-commit run --all-files
+```
+
+### 5. 验证安装
 
 ```bash
 # 运行示例程序
@@ -297,12 +310,55 @@ PR 获得批准后，维护者将合并您的代码。
 # 运行所有测试
 make test
 
+# 运行单元测试
+pytest tests/unit/ -v
+
+# 运行集成测试
+pytest tests/integration/ -v
+
+# 运行特定测试文件
+pytest tests/unit/test_agent.py -v
+
 # 运行特定测试
-pytest tests/test_specific.py -v
+pytest tests/unit/test_agent.py::TestBioCleaningAgent::test_agent_initialization -v
 
 # 生成覆盖率报告
 make test-cov
+
+# 查看HTML覆盖率报告
+open htmlcov/index.html  # macOS
+xdg-open htmlcov/index.html  # Linux
 ```
+
+### 测试要求
+
+**所有新代码必须包含测试：**
+
+1. **单元测试覆盖率目标**: >80%
+2. **集成测试**: 至少一个端到端测试
+3. **测试命名**: 清晰描述测试目的
+   ```python
+   def test_agent_handles_missing_input_files_gracefully():
+       """Test that agent gracefully handles missing input files."""
+       # Test implementation
+   ```
+4. **使用标记**: 正确标记测试类型
+   ```python
+   @pytest.mark.unit
+   def test_something():
+       pass
+   ```
+
+### CI/CD 要求
+
+您的 PR 必须通过所有 CI 检查：
+
+- ✅ 测试通过（Python 3.10, 3.11, 3.12）
+- ✅ 代码格式检查（Black）
+- ✅ Lint检查（Ruff）
+- ✅ 类型检查（mypy）
+- ✅ 安全扫描（Bandit, Safety）
+- ✅ 测试覆盖率 >80%
 
 ### 清理项目
 
