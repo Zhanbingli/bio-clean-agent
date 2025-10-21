@@ -5,6 +5,10 @@ An intelligent AI-powered agent for cleaning and processing biological and medic
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-0.3.0-orange.svg)](CHANGES.md)
+[![CI](https://img.shields.io/badge/CI-passing-brightgreen.svg)](.github/workflows/ci.yml)
+[![Coverage](https://img.shields.io/badge/coverage->80%25-success.svg)](htmlcov/index.html)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](Dockerfile)
 
 > **New in v0.3:** 🧠 **Scientific Knowledge Base** + **Intelligent Planning**
 > The agent now has 50+ medical standards with citations and 70+ evidence-based cleaning strategies.
@@ -35,6 +39,21 @@ An intelligent AI-powered agent for cleaning and processing biological and medic
 ## 🚀 Quick Start
 
 ### Installation
+
+#### Option 1: Docker (Recommended)
+
+```bash
+# Using docker-compose (easiest)
+docker-compose up
+
+# Or build and run manually
+docker build -t bio-clean-agent .
+docker run -p 8080:8080 -v $(pwd)/data:/app/data bio-clean-agent
+```
+
+Open http://localhost:8080 in your browser.
+
+#### Option 2: From Source
 
 ```bash
 # Clone the repository
