@@ -2,7 +2,10 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches:
+      - main
+      - develop
+      - 'claude/**'  # Allow CI on Claude Code branches
   pull_request:
     branches: [main, develop]
 

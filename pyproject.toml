@@ -37,6 +37,7 @@ api = [
     "uvicorn[standard]>=0.24.0",
     "python-multipart>=0.0.6",
     "websockets>=12.0",
+    "httpx>=0.24.0",  # Required for TestClient
 ]
 dev = [
     "pytest>=7.0",
@@ -44,6 +45,8 @@ dev = [
     "black>=23.0",
     "ruff>=0.1.0",
     "mypy>=1.0",
+    "httpx>=0.24.0",  # Required for API testing
+    "pydantic-settings>=2.0",  # Required for config management
 ]
 all = [
     "bio-clean-agent[seq,openai,api,dev]",
