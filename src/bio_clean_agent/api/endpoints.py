@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import os
 from typing import Any, Dict, Optional
 
 try:
-    from fastapi import FastAPI, HTTPException, BackgroundTasks
+    from fastapi import Depends, FastAPI, HTTPException, BackgroundTasks, Header
     from fastapi.middleware.cors import CORSMiddleware
     FASTAPI_AVAILABLE = True
 except ImportError:
@@ -19,6 +20,14 @@ from .jobs import (
     get_job_manager,
 )
 from ..utils.security import get_allowed_origins
+
+
+api_key = os.getenv("JOB_API_KEY")
+
+
+def require_api_key(x_api_key: Optional[str] = Header(None)) -> None:
+    if api_key and x_api_key != api_key:
+        raise HTTPException(status_code=401, detail="Invalid or missing API key")
 
 
 def create_api_app() -> Any:
@@ -58,10 +67,10 @@ def create_api_app() -> Any:
             "version": "0.1.0"
         }
 
-    @app.post("/jobs", response_model=Dict[str, str])
+    @app.post("/jobs", response_model=Dict[str, str], dependencies=[Depends(require_api_key)])
     async def submit_job(
         request: JobRequest,
-        background_tasks: BackgroundTasks
+        background_tasks: BackgroundTasks,
     ):
         """Submit a new data cleaning job."""
         job_id = job_manager.submit(request)
@@ -71,7 +80,7 @@ def create_api_app() -> Any:
 
         return {"job_id": job_id, "status": "submitted"}
 
-    @app.get("/jobs/{job_id}")
+    @app.get("/jobs/{job_id}", dependencies=[Depends(require_api_key)])
     async def get_job(job_id: str):
         """Get job status and progress."""
         status = job_manager.get_status(job_id)
@@ -79,7 +88,7 @@ def create_api_app() -> Any:
             raise HTTPException(status_code=404, detail="Job not found")
         return status
 
-    @app.get("/jobs")
+    @app.get("/jobs", dependencies=[Depends(require_api_key)])
     async def list_jobs(
         status: Optional[JobStatus] = None,
         limit: int = 50
@@ -88,7 +97,7 @@ def create_api_app() -> Any:
         jobs = job_manager.list_jobs(status=status, limit=limit)
         return {"jobs": jobs, "count": len(jobs)}
 
-    @app.post("/jobs/{job_id}/cancel")
+    @app.post("/jobs/{job_id}/cancel", dependencies=[Depends(require_api_key)])
     async def cancel_job(job_id: str):
         """Cancel a running job."""
         success = job_manager.cancel(job_id)
@@ -99,7 +108,7 @@ def create_api_app() -> Any:
             )
         return {"job_id": job_id, "status": "cancelled"}
 
-    @app.post("/jobs/{job_id}/decisions/{decision_id}")
+    @app.post("/jobs/{job_id}/decisions/{decision_id}", dependencies=[Depends(require_api_key)])
     async def resolve_decision(
         job_id: str,
         decision_id: str,
@@ -114,7 +123,7 @@ def create_api_app() -> Any:
             )
         return {"decision_id": decision_id, "status": "resolved"}
 
-    @app.get("/jobs/{job_id}/report")
+    @app.get("/jobs/{job_id}/report", dependencies=[Depends(require_api_key)])
     async def get_report(job_id: str):
         """Get job report (if completed)."""
         status = job_manager.get_status(job_id)

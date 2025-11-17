@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import asyncio
 import uuid
+import os
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from fastapi import FastAPI, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -68,6 +69,17 @@ def create_app() -> FastAPI:
     OUTPUT_DIR = Path("outputs")
     OUTPUT_DIR.mkdir(exist_ok=True)
 
+    # Security: optional API key for write endpoints
+    required_api_key = os.getenv("WEB_API_KEY")
+
+    # Upload size guardrail (bytes)
+    max_upload_mb = int(os.getenv("MAX_FILE_SIZE_MB") or 100)
+    max_upload_bytes = max_upload_mb * 1024 * 1024
+
+    def _require_api_key(x_api_key: Optional[str] = Header(None)) -> None:
+        if required_api_key and x_api_key != required_api_key:
+            raise HTTPException(status_code=401, detail="Invalid or missing API key")
+
     # Serve static files
     STATIC_DIR = Path(__file__).parent / "static"
     if STATIC_DIR.exists():
@@ -91,14 +103,28 @@ def create_app() -> FastAPI:
         }
 
     @app.post("/upload")
-    async def upload_file(file: UploadFile = File(...)):
+    async def upload_file(file: UploadFile = File(...), _: None = Depends(_require_api_key)):
         """Upload data file with security validation."""
         if not file.filename:
             raise HTTPException(400, "No file provided")
 
-        # Read file content
-        content = await file.read()
-        file_size = len(content)
+        # Stream read to avoid loading entire payload in memory
+        from tempfile import SpooledTemporaryFile  # Local import to reduce startup cost
+
+        spool = SpooledTemporaryFile(max_size=max_upload_bytes, mode="w+b")
+        total = 0
+        chunk_size = 1024 * 1024
+        while True:
+            chunk = await file.read(chunk_size)
+            if not chunk:
+                break
+            total += len(chunk)
+            if total > max_upload_bytes:
+                spool.close()
+                raise HTTPException(400, f"File too large (>{max_upload_mb} MB limit)")
+            spool.write(chunk)
+        spool.seek(0)
+        file_size = total
 
         # Security validation
         try:
@@ -117,7 +143,9 @@ def create_app() -> FastAPI:
 
         # Save file
         try:
-            save_path.write_bytes(content)
+            with save_path.open("wb") as handle:
+                handle.write(spool.read())
+            spool.close()
             logger.info(f"File uploaded successfully: {file_id} ({file_size} bytes)")
         except Exception as e:
             logger.error(f"Failed to save uploaded file: {e}")
@@ -159,7 +187,7 @@ def create_app() -> FastAPI:
         }
 
     @app.post("/analyze")
-    async def analyze_data(file_id: str):
+    async def analyze_data(file_id: str, _: None = Depends(_require_api_key)):
         """Analyze uploaded data and create intelligent plan."""
         # Find file
         files = list(UPLOAD_DIR.glob(f"{file_id}.*"))

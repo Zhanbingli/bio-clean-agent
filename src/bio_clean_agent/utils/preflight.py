@@ -1,13 +1,27 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, List
+from shutil import which
+from typing import Any, Dict, List
 
 from ..dataspec.models import Dataset
 from .storage import estimate_dataset_size, format_bytes
 
 
-def run_preflight_checks(dataset: Dataset, parameters: Dict | None = None) -> List[str]:
+def _warn_missing_tools(tools: List[str], warnings: List[str], parameters: Dict[str, Any]) -> None:
+    """Append warnings when required external tools are unavailable."""
+    if parameters.get("skip_tool_checks"):
+        return
+    missing = [tool for tool in tools if which(tool) is None]
+    if missing:
+        formatted = ", ".join(sorted(missing))
+        warnings.append(
+            f"External tools missing from PATH: {formatted}. "
+            "Install them or set 'skip_tool_checks' to disable this warning."
+        )
+
+
+def run_preflight_checks(dataset: Dataset, parameters: Dict[str, Any] | None = None) -> List[str]:
     """Return human-readable warnings detected before running a pipeline."""
     parameters = parameters or {}
     warnings: List[str] = []
@@ -36,6 +50,7 @@ def run_preflight_checks(dataset: Dataset, parameters: Dict | None = None) -> Li
         adapter = (parameters or {}).get("adapter_sequence")
         if not adapter:
             warnings.append("No adapter sequence provided; trimming may be suboptimal.")
+        _warn_missing_tools(["fastqc", "cutadapt"], warnings, parameters)
 
     if dataset.dataset_type == "transcriptomics":
         if dataset.metadata_path and not Path(dataset.metadata_path).exists():

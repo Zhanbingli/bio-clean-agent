@@ -228,6 +228,9 @@ class BioCleaningAgent:
         workdir.mkdir(parents=True, exist_ok=True)
         pipeline = self._initialize_pipeline(dataset, workdir)
         warnings = list(active_plan.warnings)
+        missing_tool_warning = next((w for w in warnings if "External tools missing" in w), None)
+        if missing_tool_warning and not parameter_map.get("allow_missing_tools"):
+            raise RuntimeError(missing_tool_warning)
         if warnings and any(msg.startswith("Missing input files") for msg in warnings) and not parameter_map.get("allow_missing_inputs"):
             missing_message = next(msg for msg in warnings if msg.startswith("Missing input files"))
             raise FileNotFoundError(missing_message)

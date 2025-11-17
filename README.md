@@ -200,6 +200,15 @@ parameters:
 report_dir: reports
 ```
 
+### Environment variables
+
+Copy `.env.example` to `.env` and adjust for your deployment:
+- `ALLOWED_ORIGINS`: comma-separated trusted origins for the web UI
+- `PHI_HASH_SALT`: strong random hex string for PHI hashing
+- `OPENAI_API_KEY`: optional, only when using the OpenAI planner backend
+- `MAX_FILE_SIZE_MB`: upload size guardrail enforced by the web server
+- `WEB_API_KEY` / `JOB_API_KEY`: API keys required for web uploads and REST job endpoints
+
 ## 🛠️ Extending
 
 - **Add Pipelines**: Inherit from `Pipeline` and define steps
