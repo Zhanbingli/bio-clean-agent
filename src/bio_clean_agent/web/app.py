@@ -2,16 +2,21 @@
 
 from __future__ import annotations
 
-import asyncio
-import uuid
 import os
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
-from fastapi.staticfiles import StaticFiles
+try:
+    from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
+    from fastapi.middleware.cors import CORSMiddleware
+    from fastapi.responses import FileResponse, HTMLResponse
+    from fastapi.staticfiles import StaticFiles
+    FASTAPI_AVAILABLE = True
+    _FASTAPI_IMPORT_ERROR: Optional[Exception] = None
+except ImportError as exc:  # pragma: no cover - optional dependency guard
+    FASTAPI_AVAILABLE = False
+    _FASTAPI_IMPORT_ERROR = exc
+
 from pydantic import BaseModel
 
 from ..api.jobs import DataType, JobPriority, JobRequest, get_job_manager
@@ -44,6 +49,10 @@ class JobSubmission(BaseModel):
 
 def create_app() -> FastAPI:
     """Create and configure FastAPI application."""
+    if not FASTAPI_AVAILABLE:
+        raise ImportError(
+            "FastAPI is required for the web interface. Install with `pip install \"bio-clean-agent[api]\"`."
+        ) from _FASTAPI_IMPORT_ERROR
 
     app = FastAPI(
         title="Bio Clean Agent",
