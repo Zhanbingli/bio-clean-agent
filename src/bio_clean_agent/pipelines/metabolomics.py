@@ -38,10 +38,21 @@ class MetabolomicsCleaningPipeline(Pipeline):
     def load_table(self, context: Dict) -> StepResult:
         dataset = context["dataset"]
         table_path = dataset.raw_paths[0]
+        allow_missing = context.get("parameters", {}).get("allow_missing_inputs", False)
+        if not Path(table_path).exists():
+            error_msg = f"Metabolomics table not found: {table_path}"
+            if allow_missing:
+                return StepResult(name="load_table", success=False, error=error_msg, details={"hint": "Provide a valid intensity table path or disable allow_missing_inputs to fail earlier."})
+            raise FileNotFoundError(error_msg)
         try:
             df = self._read_table(table_path)
         except Exception as exc:
-            return StepResult(name="load_table", success=False, error=str(exc))
+            return StepResult(
+                name="load_table",
+                success=False,
+                error=str(exc),
+                details={"hint": "Ensure the table is a valid CSV/TSV/Excel file with metabolites as rows."},
+            )
         context.setdefault("frames", {})["intensity"] = df
         return StepResult(name="load_table", success=True, details={"shape": df.shape})
 

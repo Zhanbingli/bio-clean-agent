@@ -71,7 +71,15 @@ class Pipeline:
         self.validate_context(context)
         results: List[StepResult] = []
         for step in self.build_steps(context):
-            result = step.run(context)
+            try:
+                result = step.run(context)
+            except Exception as exc:  # pragma: no cover - defensive safety net
+                result = StepResult(
+                    name=step.name,
+                    success=False,
+                    error=str(exc),
+                    details={"exception_type": type(exc).__name__},
+                )
             context.setdefault("results", {})[step.name] = result
             results.append(result)
             if not result.success:

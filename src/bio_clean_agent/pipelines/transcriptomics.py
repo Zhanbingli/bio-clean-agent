@@ -37,6 +37,12 @@ class TranscriptomicsCleaningPipeline(Pipeline):
     def load_matrix(self, context: Dict) -> StepResult:
         dataset = context["dataset"]
         matrix_path = dataset.raw_paths[0]
+        allow_missing = context.get("parameters", {}).get("allow_missing_inputs", False)
+        if not Path(matrix_path).exists():
+            error_msg = f"Matrix file not found: {matrix_path}"
+            if allow_missing:
+                return StepResult(name="load_matrix", success=False, error=error_msg, details={"hint": "Provide a valid matrix path or disable allow_missing_inputs to stop earlier."})
+            raise FileNotFoundError(error_msg)
         try:
             df = pd.read_csv(matrix_path, index_col=0)
         except Exception as exc:
@@ -45,7 +51,12 @@ class TranscriptomicsCleaningPipeline(Pipeline):
             try:
                 df = pd.read_csv(matrix_path, index_col=0, sep=delimiter)
             except Exception as retry_exc:
-                return StepResult(name="load_matrix", success=False, error=str(retry_exc))
+                return StepResult(
+                    name="load_matrix",
+                    success=False,
+                    error=str(retry_exc),
+                    details={"hint": f"Detected delimiter '{delimiter}' still failed; ensure the file is a valid delimited table."},
+                )
         context.setdefault("frames", {})["counts"] = df
         return StepResult(name="load_matrix", success=True, details={"shape": df.shape})
 
