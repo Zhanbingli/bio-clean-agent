@@ -128,12 +128,18 @@ def build_default_registry() -> LLMRegistry:
             logger.warning("API key format validation failed - may be invalid or test key")
 
         model_name = cfg.options.get("model") or cfg.options.get("model_name") or "gpt-4o-mini"
+        base_url = cfg.options.get("base_url")
         return OpenAIChatLLM(
             model=model_name,
             api_key=api_key,
             organization=cfg.options.get("organization"),
             request_timeout=cfg.options.get("request_timeout", 60),
-            extra_options={k: v for k, v in cfg.options.items() if k not in {"model", "model_name", "api_key", "organization"}},
+            base_url=base_url,
+            extra_options={
+                k: v
+                for k, v in cfg.options.items()
+                if k not in {"model", "model_name", "api_key", "organization", "base_url", "request_timeout"}
+            },
         )
 
     registry.register(
@@ -145,6 +151,47 @@ def build_default_registry() -> LLMRegistry:
             tags=("cloud", "high-quality"),
         ),
         openai_builder,
+    )
+
+    # DeepSeek provider - uses OpenAI-compatible client with base_url
+    def deepseek_builder(cfg: ModelConfig) -> LLMInterface:
+        api_key = cfg.api_key or cfg.options.get("api_key") or os.getenv("DEEPSEEK_API_KEY")
+        if not api_key:
+            raise LLMProviderError("DeepSeek backend requires an API key (set DEEPSEEK_API_KEY env var)")
+
+        model_name = cfg.options.get("model") or cfg.options.get("model_name") or "deepseek-chat"
+        base_url = cfg.options.get("base_url") or os.getenv("DEEPSEEK_API_BASE", "https://api.deepseek.com")
+        request_timeout = cfg.options.get("request_timeout", 60)
+        return OpenAIChatLLM(
+            model=model_name,
+            api_key=api_key,
+            organization=cfg.options.get("organization"),
+            request_timeout=request_timeout,
+            base_url=base_url,
+            extra_options={
+                k: v
+                for k, v in cfg.options.items()
+                if k
+                not in {
+                    "model",
+                    "model_name",
+                    "api_key",
+                    "organization",
+                    "base_url",
+                    "request_timeout",
+                }
+            },
+        )
+
+    registry.register(
+        ModelDescriptor(
+            key="deepseek",
+            provider="deepseek",
+            name="DeepSeek Chat",
+            description="DeepSeek models via OpenAI-compatible API.",
+            tags=("cloud", "deepseek"),
+        ),
+        deepseek_builder,
     )
 
     return registry
@@ -187,6 +234,7 @@ class OpenAIChatLLM:
         api_key: str,
         organization: Optional[str] = None,
         request_timeout: int = 60,
+        base_url: Optional[str] = None,
         extra_options: Optional[Dict[str, Any]] = None,
     ) -> None:
         self._logger = get_logger(__name__)
@@ -213,7 +261,7 @@ class OpenAIChatLLM:
                 self._client.organization = organization
         else:
             self._use_legacy_client = False
-            self._client = OpenAI(api_key=api_key, organization=organization)
+            self._client = OpenAI(api_key=api_key, organization=organization, base_url=base_url)
 
     def generate(self, messages: List[Dict[str, str]], **kwargs: Any) -> str:
         params = {**self.extra_options, **kwargs}

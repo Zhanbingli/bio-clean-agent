@@ -2,14 +2,12 @@
 """
 🚀 Bio Clean Agent Web Interface Launcher
 
-This script starts the web interface for the Bio Clean Agent.
-Just run: python start_web.py
-
-Then open http://localhost:8080 in your browser!
+Recommended entrypoint: `bio-clean-agent serve`
+This wrapper is kept for compatibility; it simply runs the same server.
+Open http://localhost:8080 in your browser after starting.
 """
 
 import sys
-import subprocess
 from pathlib import Path
 
 
@@ -27,17 +25,8 @@ def check_dependencies():
     return missing
 
 
-def install_dependencies(packages):
-    """Install missing packages."""
-    print(f"📦 Installing missing packages: {', '.join(packages)}")
-    subprocess.check_call(
-        [sys.executable, "-m", "pip", "install"] + packages
-    )
-    print("✅ Dependencies installed!")
-
-
 def main():
-    """Main launcher."""
+    """Main launcher (compat wrapper around bio-clean-agent serve)."""
     print("=" * 70)
     print("🧬 Bio Clean Agent - Web Interface")
     print("=" * 70)
@@ -49,22 +38,10 @@ def main():
 
     if missing:
         print(f"⚠️  Missing packages: {', '.join(missing)}")
-        response = input("Install them now? [Y/n]: ").strip().lower()
-
-        if response in {"", "y", "yes"}:
-            try:
-                install_dependencies(missing)
-            except Exception as e:
-                print(f"❌ Failed to install dependencies: {e}")
-                print("\nPlease install manually:")
-                print(f"  pip install {' '.join(missing)}")
-                sys.exit(1)
-        else:
-            print("Please install dependencies manually:")
-            print(f"  pip install {' '.join(missing)}")
-            sys.exit(1)
-    else:
-        print("✅ All dependencies installed")
+        print("Please install dependencies manually before starting the server:")
+        print("  pip install -e .[api]")
+        sys.exit(1)
+    print("✅ All dependencies installed")
 
     print()
     print("🚀 Starting web server...")

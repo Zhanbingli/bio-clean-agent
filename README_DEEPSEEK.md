@@ -52,20 +52,17 @@ echo $DEEPSEEK_API_KEY
 cd /Users/lizhanbing12/ai-agent
 
 # 安装必需的包
-pip install openai rich pandas numpy scipy
+pip install -e .[openai]
 ```
 
 ### 步骤 4: 启动 AI Agent
 
 ```bash
-# 方法 1: 使用快速启动脚本（推荐）
+# 推荐：统一入口（支持 DeepSeek/OpenAI/模拟）
+bio-clean-agent chat --model deepseek
+
+# 兼容：快速启动脚本（需已设置 DEEPSEEK_API_KEY）
 ./start_deepseek_agent.sh
-
-# 方法 2: 直接运行
-python bio-clean-cli.py
-
-# 方法 3: 指定用户
-python bio-clean-cli.py --user analyst_jane
 ```
 
 ### 步骤 5: 开始对话！

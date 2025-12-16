@@ -13,11 +13,13 @@ import os
 from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
 from enum import Enum
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    load_dotenv = None
 
-load_dotenv()
-
-api_key =os.getenv('DEEPSEEK_API_KEY')
+if load_dotenv:
+    load_dotenv()
 class LLMProvider(str, Enum):
     """Supported LLM providers."""
     DEEPSEEK = "deepseek"

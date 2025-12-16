@@ -286,5 +286,23 @@ def run(
         typer.echo(f"Reports saved to {paths}")
 
 
+@app.command()
+def serve(
+    host: str = typer.Option("127.0.0.1", help="Host interface for the web/API server"),
+    port: int = typer.Option(8080, help="Port for the web/API server"),
+    reload: bool = typer.Option(False, help="Enable auto-reload (development only)"),
+) -> None:
+    """Start the web/API server (FastAPI + Uvicorn)."""
+    try:
+        from .web.server import run_server
+    except Exception as exc:
+        typer.secho(f"Failed to start server: {exc}", fg=typer.colors.RED)
+        typer.secho("Install API extras first: pip install -e .[api]", fg=typer.colors.YELLOW)
+        raise typer.Exit(code=1)
+
+    typer.echo(f"Starting server on http://{host}:{port} (reload={reload})")
+    run_server(host=host, port=port, reload=reload)
+
+
 if __name__ == "__main__":
     app()

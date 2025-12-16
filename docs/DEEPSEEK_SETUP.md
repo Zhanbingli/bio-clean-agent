@@ -33,7 +33,15 @@ $env:DEEPSEEK_API_KEY="sk-your-api-key-here"
 [System.Environment]::SetEnvironmentVariable('DEEPSEEK_API_KEY', 'sk-your-api-key-here', 'User')
 ```
 
-### 3. 启动 AI Agent
+### 3. 安装依赖
+
+在项目根目录执行：
+
+```bash
+pip install -e .[openai]
+```
+
+### 4. 启动 AI Agent
 
 ```bash
 cd /Users/lizhanbing12/ai-agent

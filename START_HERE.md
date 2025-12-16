@@ -106,9 +106,9 @@ curl http://localhost:8080/health
 
 ## 完整文档
 
-- **[WEB_INTERFACE_GUIDE.md](WEB_INTERFACE_GUIDE.md)** - Web界面完整指南
+- **[docs/WEB_INTERFACE_GUIDE.md](docs/WEB_INTERFACE_GUIDE.md)** - Web界面完整指南
 - **[QUICKSTART.md](QUICKSTART.md)** - Python API快速开始
-- **[ADVANCED_CAPABILITIES.md](ADVANCED_CAPABILITIES.md)** - 高级功能说明
+- **[docs/ADVANCED_CAPABILITIES.md](docs/ADVANCED_CAPABILITIES.md)** - 高级功能说明
 
 ---
 

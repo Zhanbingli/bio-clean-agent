@@ -6,8 +6,8 @@
 
 ### 🎮 交互式 CLI
 ```bash
-# 启动交互式界面（类似 Claude Code）
-python bio-clean-cli.py
+# 启动交互式界面（统一入口）
+bio-clean-agent chat --model simulated
 ```
 
 **你将得到**：
@@ -26,24 +26,22 @@ python bio-clean-cli.py
 ```bash
 cd /Users/lizhanbing12/ai-agent
 
-# 安装基础依赖
-pip install pandas numpy scipy rich
-
-# 或安装完整版本
-pip install -e .[all]
+# 推荐：安装带 LLM/Web 的增强包
+pip install -e .[openai]
 ```
 
 ### 2. 启动交互式界面
 
 ```bash
-# 方式 1: 直接运行
-python bio-clean-cli.py
+# 方式 1: 默认（内置模拟模型，离线可用）
+bio-clean-agent chat --model simulated
 
-# 方式 2: 指定用户
-python bio-clean-cli.py --user your_name
+# 方式 2: DeepSeek / OpenAI（需对应 API Key）
+bio-clean-agent chat --model deepseek
+bio-clean-agent chat --model openai
 
-# 方式 3: 作为模块
-python -m bio_clean_agent.interactive.repl
+# 方式 3: 离线演示（不执行外部工具）
+bio-clean-agent chat --model simulated --dry-run
 ```
 
 ### 3. 开始对话！

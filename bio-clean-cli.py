@@ -109,7 +109,7 @@ Slash commands:
     parser.add_argument(
         "--version",
         action="version",
-        version="Bio Clean Agent v0.5.0 - LLM-Powered Edition"
+        version="Bio Clean Agent v0.3.0 - LLM-Powered Edition"
     )
 
     args = parser.parse_args()
