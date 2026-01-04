@@ -1,0 +1,9 @@
+dataset:
+    dataset_id: "test_clinical_run"
+    dataset_type: "clinical"
+    raw_paths:
+        - "data/sample_clinical_trial.csv"
+output_dir: "outputs/test_clinical_run"
+parameters:
+    user_id: "verifier"
+    duplicate_keep_strategy: "first"

@@ -11,6 +11,7 @@ from .pipelines import (
     MetabolomicsCleaningPipeline,
     SequencingCleaningPipeline,
     TranscriptomicsCleaningPipeline,
+    ClinicalTrialCleaningPipeline,
 )
 from .dataspec.models import DATASET_MODEL_MAP, load_dataset
 from .llm import (
@@ -41,6 +42,10 @@ def build_agent(output_root: str | Path = "outputs", executor=None) -> BioCleani
     agent.register_pipeline(
         "metabolomics",
         lambda dataset, workdir: MetabolomicsCleaningPipeline(output_dir=workdir),
+    )
+    agent.register_pipeline(
+        "clinical",
+        lambda dataset, workdir: ClinicalTrialCleaningPipeline(output_dir=workdir),
     )
     return agent
 
@@ -147,6 +152,13 @@ def init(
         ion_mode = typer.prompt("Ion mode (positive/negative, optional)", default="")
         if ion_mode:
             extras["ion_mode"] = ion_mode.lower()
+    elif target_type == "clinical":
+        study_id = typer.prompt("Study ID (optional)", default="")
+        if study_id:
+            extras["study_id"] = study_id
+        description = typer.prompt("Study description (optional)", default="")
+        if description:
+            extras["description"] = description
 
     parameters = suggest_parameters(target_type, str(files[0]))
     typer.echo("Suggested parameters:")

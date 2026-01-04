@@ -2,6 +2,7 @@ from .base import Pipeline, PipelineReport, PipelineStep, StepResult, ToolExecut
 from .metabolomics import MetabolomicsCleaningPipeline
 from .sequencing import SequencingCleaningPipeline
 from .transcriptomics import TranscriptomicsCleaningPipeline
+from .clinical import ClinicalTrialCleaningPipeline
 
 __all__ = [
     "Pipeline",
@@ -12,4 +13,5 @@ __all__ = [
     "SequencingCleaningPipeline",
     "TranscriptomicsCleaningPipeline",
     "MetabolomicsCleaningPipeline",
+    "ClinicalTrialCleaningPipeline",
 ]

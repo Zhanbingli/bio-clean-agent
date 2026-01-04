@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, validator
 
 class Dataset(BaseModel):
     dataset_id: str = Field(..., description="Unique identifier for the dataset")
-    dataset_type: Literal["sequencing", "transcriptomics", "metabolomics"]
+    dataset_type: Literal["sequencing", "transcriptomics", "metabolomics", "clinical"]
     raw_paths: List[str] = Field(..., description="Paths to raw input files")
     metadata_path: Optional[str] = Field(None, description="Optional metadata table associated with the dataset")
 
@@ -36,10 +36,18 @@ class MetabolomicsDataset(Dataset):
     ion_mode: Optional[Literal["positive", "negative"]] = Field(None, description="Ionization mode for MS data")
 
 
+
+class ClinicalDataset(Dataset):
+    dataset_type: Literal["clinical"] = "clinical"
+    study_id: Optional[str] = Field(None, description="Clinical study identifier")
+    description: Optional[str] = Field(None, description="Description of the clinical trial")
+
+
 DATASET_MODEL_MAP = {
     "sequencing": SequencingDataset,
     "transcriptomics": TranscriptomicsDataset,
     "metabolomics": MetabolomicsDataset,
+    "clinical": ClinicalDataset,
 }
 
 
