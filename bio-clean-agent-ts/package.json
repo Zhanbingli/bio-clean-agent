@@ -1,0 +1,19 @@
+{
+  "name": "bio-clean-agent-ts",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Intelligent AI-powered agent for cleaning and processing biological and medical data",
+  "license": "MIT",
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "test": "turbo test",
+    "lint": "turbo lint",
+    "clean": "turbo clean"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "typescript": "^5.7.0"
+  }
+}
