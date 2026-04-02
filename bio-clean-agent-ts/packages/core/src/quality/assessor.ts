@@ -33,13 +33,13 @@ import {
  *
  * @example
  * ```ts
- * const ranges: ReferenceRange = {
+ * const ranges: QualityReferenceRange = {
  *   systolic_bp: [70, 200],
  *   heart_rate:  [30, 220],
  * };
  * ```
  */
-export interface ReferenceRange {
+export interface QualityReferenceRange {
   [field: string]: [number, number];
 }
 
@@ -140,9 +140,9 @@ function safeQuantile(values: number[], p: number): number | null {
  */
 export class DataQualityAssessor {
   /** Per-field reference ranges used by the validity check. */
-  private readonly referenceRanges: ReferenceRange;
+  private readonly referenceRanges: QualityReferenceRange;
 
-  constructor(referenceRanges: ReferenceRange = {}) {
+  constructor(referenceRanges: QualityReferenceRange = {}) {
     this.referenceRanges = referenceRanges;
   }
 
@@ -331,7 +331,8 @@ export class DataQualityAssessor {
     const outliersByField: Record<string, number> = {};
 
     // --- Reference range checks ---
-    for (const [field, [minVal, maxVal]] of Object.entries(this.referenceRanges)) {
+    for (const [field, range] of Object.entries(this.referenceRanges)) {
+      const [minVal, maxVal] = range as [number, number];
       if (!numericCols.includes(field)) continue;
       const values = data
         .map((row) => row[field])

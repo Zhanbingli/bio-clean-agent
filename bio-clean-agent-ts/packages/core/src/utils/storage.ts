@@ -1,8 +1,6 @@
 /**
  * @file storage.ts
- * @description Storage utilities for the Bio Clean Agent, porting helpers from
- * Python bio_clean_agent/utils/storage.py and adding Node.js file-I/O helpers
- * required by the TypeScript agent.
+ * @description Storage utilities for the Bio Clean Agent — Node.js file-I/O helpers.
  */
 
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
@@ -14,7 +12,7 @@ import { join } from "node:path";
 
 /**
  * Sums the on-disk sizes of the given file paths, silently skipping any path
- * that does not exist (mirrors Python's `estimate_dataset_size`).
+ * that does not exist.
  *
  * @param paths - Iterable of filesystem paths.
  * @returns Total size in bytes.
@@ -28,7 +26,7 @@ export async function estimateDatasetSize(
       const info = await stat(p);
       total += info.size;
     } catch {
-      // File not found — skip, matching Python behaviour.
+      // File not found — skip silently.
     }
   }
   return total;
@@ -64,7 +62,6 @@ export function formatBytes(numBytes: number): string {
 
 /**
  * Creates `dirPath` (and any missing ancestors) if it does not already exist.
- * Equivalent to Python's `Path(path).mkdir(parents=True, exist_ok=True)`.
  *
  * @param dirPath - Directory path to create.
  */

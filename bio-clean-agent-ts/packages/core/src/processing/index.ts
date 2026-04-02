@@ -19,3 +19,8 @@
 export type { StepResult, StepAction } from "./pipeline.js";
 
 export { PipelineReport, PipelineStep, Pipeline } from "./pipeline.js";
+
+export { EnhancedClinicalTrialHandler } from "./clinical-handler.js";
+export type { Issue } from "./clinical-handler.js";
+
+export { ClinicalTrialCleaningPipeline } from "./clinical-pipeline.js";

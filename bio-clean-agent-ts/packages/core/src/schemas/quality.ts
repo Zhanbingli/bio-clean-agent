@@ -2,7 +2,6 @@
  * @file quality.ts
  * @description Zod schemas for data quality assessment: dimensional scoring,
  * per-dimension assessments, and full dataset quality reports.
- * Ported from Python Pydantic models.
  */
 
 import { z } from "zod";

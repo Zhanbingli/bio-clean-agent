@@ -8,7 +8,6 @@
  * - {@link PipelineStep}   – named, callable unit of work within a pipeline
  * - {@link Pipeline}       – ordered, context-driven step orchestrator
  *
- * Ported from the Python dataclass / class hierarchy in `processing/pipeline.py`.
  */
 
 // ---------------------------------------------------------------------------

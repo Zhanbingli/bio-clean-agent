@@ -8,7 +8,6 @@
  * - {@link DecisionManager}     – orchestrates decision resolution via a strategy
  * - {@link MedicalDataDecisions} – factory for common biomedical decision contexts
  *
- * Ported from Python `decisions/manager.py`.
  */
 
 // ---------------------------------------------------------------------------

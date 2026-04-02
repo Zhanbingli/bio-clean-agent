@@ -1,7 +1,6 @@
 /**
  * @file logging.ts
- * @description Lightweight logger factory, ported from Python
- * bio_clean_agent/utils/logging.py. Uses console output only — no external
+ * @description Lightweight logger factory. Uses console output only — no external
  * dependencies — to keep the package footprint minimal.
  */
 
@@ -63,7 +62,7 @@ class ConsoleLogger implements Logger {
 }
 
 // ---------------------------------------------------------------------------
-// Logger registry (one instance per name, like Python's logging.getLogger)
+// Logger registry (one instance per name)
 // ---------------------------------------------------------------------------
 
 const _registry = new Map<string, Logger>();
@@ -71,8 +70,7 @@ const _registry = new Map<string, Logger>();
 /**
  * Returns a named {@link Logger}, creating one on first call for that name.
  *
- * Subsequent calls with the same `name` return the cached instance, matching
- * the behaviour of Python's `logging.getLogger`.
+ * Subsequent calls with the same `name` return the cached instance.
  *
  * @param name - Logger name, typically the module or component name.
  * @returns A {@link Logger} that writes to the console with timestamps.

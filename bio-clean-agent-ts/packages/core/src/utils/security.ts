@@ -1,7 +1,6 @@
 /**
  * @file security.ts
- * @description Security utilities for the Bio Clean Agent, ported from Python
- * bio_clean_agent/utils/security.py. Uses the Node.js built-in `crypto` module.
+ * @description Security utilities for the Bio Clean Agent. Uses the Node.js built-in `crypto` module.
  */
 
 import { createHash, randomUUID } from "node:crypto";

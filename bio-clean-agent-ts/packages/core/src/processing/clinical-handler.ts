@@ -2,8 +2,7 @@
  * @file processing/clinical-handler.ts
  * @description Production-grade clinical trial data handler.
  *
- * Implements {@link EnhancedClinicalTrialHandler}, a TypeScript port of the
- * Python `EnhancedClinicalTrialHandler` class.  Operates on plain
+ * Implements {@link EnhancedClinicalTrialHandler}.  Operates on plain
  * `Record<string, unknown>[]` arrays (no Danfo.js dependency) and delegates
  * all statistical work to `simple-statistics`.
  *

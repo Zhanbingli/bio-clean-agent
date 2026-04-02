@@ -9,7 +9,7 @@ export { EventStream } from "./event-stream.js";
 import { EventStream } from "./event-stream.js";
 
 // ---------------------------------------------------------------------------
-// Module-level singleton — mirrors Python's `get_event_stream()`.
+// Module-level singleton
 // ---------------------------------------------------------------------------
 
 let _instance: EventStream | undefined;

@@ -7,7 +7,6 @@
  * to assemble a domain-aware {@link ExecutionPlan} from high-level objectives
  * and an optional data profile.
  *
- * Ported from Python `planning/smart_planner.py`.
  */
 
 import {

@@ -1,7 +1,7 @@
 /**
  * @file job.ts
  * @description Zod schemas for job lifecycle management: requests, progress tracking,
- * and human-in-the-loop decision points. Ported from Python Pydantic models.
+ * and human-in-the-loop decision points.
  */
 
 import { z } from "zod";
@@ -30,16 +30,11 @@ export type JobPriority = z.infer<typeof JobPrioritySchema>;
 
 /**
  * Domain-specific data type processed by the job.
- * Maps to the Python `DataType` enum.
  */
 export const DataTypeSchema = z
   .enum([
     "clinical_trial",
     "ehr",
-    "genomics",
-    "transcriptomics",
-    "metabolomics",
-    "imaging_metadata",
     "general",
   ])
   .describe("Biomedical domain type of the input data");
@@ -55,8 +50,8 @@ export type DataType = z.infer<typeof DataTypeSchema>;
  * @example
  * ```ts
  * const req = JobRequestSchema.parse({
- *   data_type: "genomics",
- *   input_paths: ["/data/sample.vcf"],
+ *   data_type: "clinical_trial",
+ *   input_paths: ["/data/trial.csv"],
  *   output_dir: "/results/job-001",
  * });
  * ```

@@ -10,8 +10,6 @@
  * - {@link AgentPlan}            – derived execution blueprint produced by {@link BioCleaningAgent.plan}
  * - {@link AgentExecutionResult} – final outcome returned by {@link BioCleaningAgent.planAndExecute}
  *
- * Ported from Python `agent.py`.
- *
  * @example
  * ```ts
  * const agent = new BioCleaningAgent();
@@ -52,8 +50,7 @@ import type { DataProfile } from "./planning/smart-planner.js";
 export interface AgentRequest {
   /**
    * Raw dataset descriptor.  Must include at minimum a `dataset_type` field
-   * matching one of the registered dataset types (`"sequencing"`,
-   * `"transcriptomics"`, `"metabolomics"`, `"clinical"`).
+   * matching one of the registered dataset types (`"clinical"`, `"ehr"`).
    */
   dataset: Record<string, unknown>;
 
@@ -85,7 +82,7 @@ export interface AgentPlan {
   /** Identifier of the dataset to be processed. */
   datasetId: string;
 
-  /** Detected dataset type (e.g. `"clinical"`, `"sequencing"`). */
+  /** Detected dataset type (e.g. `"clinical"`, `"ehr"`). */
   datasetType: string;
 
   /** Name of the pipeline that will be used to process the dataset. */

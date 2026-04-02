@@ -6,13 +6,13 @@
  *
  * @example
  * ```ts
- * import { DataQualityAssessor, ReferenceRange } from "@bio-clean/core/quality";
+ * import { DataQualityAssessor, QualityReferenceRange } from "@bio-clean/core/quality";
  * ```
  */
 
 export {
   DataQualityAssessor,
-  ReferenceRange,
+  QualityReferenceRange,
   isNumeric,
   countMissing,
   getNumericColumns,

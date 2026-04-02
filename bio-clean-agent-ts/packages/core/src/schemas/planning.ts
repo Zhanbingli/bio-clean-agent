@@ -2,7 +2,7 @@
  * @file planning.ts
  * @description Zod schemas for LLM-generated cleaning execution plans.
  * Models a structured plan composed of ordered, dependency-aware steps
- * with priority and risk metadata. Ported from Python Pydantic models.
+ * with priority and risk metadata.
  */
 
 import { z } from "zod";

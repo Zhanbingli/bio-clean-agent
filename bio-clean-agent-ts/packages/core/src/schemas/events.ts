@@ -2,7 +2,6 @@
  * @file events.ts
  * @description Zod schemas for the internal event bus used to stream
  * real-time job progress, decisions, and log messages.
- * Ported from Python Pydantic models and the original TypeScript interface stubs.
  */
 
 import { z } from "zod";
@@ -11,7 +10,7 @@ import { z } from "zod";
 // EventType enumeration
 // ---------------------------------------------------------------------------
 
-/** All valid event type string literals, mirroring Python's EventType enum. */
+/** All valid event type string literals. */
 export const EVENT_TYPES = [
   "job.submitted",
   "job.started",

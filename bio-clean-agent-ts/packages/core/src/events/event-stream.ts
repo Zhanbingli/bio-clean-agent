@@ -1,7 +1,6 @@
 /**
  * @file event-stream.ts
- * @description EventStream class for real-time job monitoring, ported from
- * Python bio_clean_agent/observer/events.py. Uses Node.js EventEmitter as the
+ * @description EventStream class for real-time job monitoring. Uses Node.js EventEmitter as the
  * underlying dispatch mechanism.
  */
 

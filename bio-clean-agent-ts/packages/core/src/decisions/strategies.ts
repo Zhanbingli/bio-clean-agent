@@ -12,7 +12,6 @@
  * Note: `InteractiveStrategy` (terminal-based) is intentionally omitted here;
  * it belongs in the CLI package.
  *
- * Ported from Python `decisions/strategies.py`.
  */
 
 import type {

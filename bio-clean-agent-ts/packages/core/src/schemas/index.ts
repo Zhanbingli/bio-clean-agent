@@ -22,9 +22,6 @@
 export {
   DATASET_TYPES,
   DatasetBaseSchema,
-  SequencingDatasetSchema,
-  TranscriptomicsDatasetSchema,
-  MetabolomicsDatasetSchema,
   ClinicalDatasetSchema,
   DatasetSchema,
   loadDataset,
@@ -32,9 +29,6 @@ export {
 
 export type {
   DatasetTypeValue,
-  SequencingDataset,
-  TranscriptomicsDataset,
-  MetabolomicsDataset,
   ClinicalDataset,
   Dataset,
 } from "./dataset.js";
