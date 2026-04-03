@@ -8,3 +8,4 @@ dist/
 coverage/
 uploads/
 outputs/
+test-output/

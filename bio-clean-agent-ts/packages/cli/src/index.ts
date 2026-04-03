@@ -34,10 +34,11 @@ program
   )
   .option("--output <dir>", "Output directory", "./output")
   .option("--auto-approve", "Skip confirmation prompts and auto-approve plan")
+  .option("--no-llm", "Disable LLM advisor (use rule-based cleaning only)")
   .action(
     async (
       file: string,
-      options: { type: string; output: string; autoApprove?: boolean }
+      options: { type: string; output: string; autoApprove?: boolean; noLlm?: boolean }
     ) => {
       await runCommand(file, options);
     }

@@ -24,5 +24,8 @@ export * from "./planning/index.js";
 // Decisions
 export * from "./decisions/index.js";
 
+// LLM
+export * from "./llm/index.js";
+
 // Agent
 export * from "./agent.js";

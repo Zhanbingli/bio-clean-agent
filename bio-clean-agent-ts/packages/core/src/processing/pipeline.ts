@@ -108,7 +108,7 @@ export class PipelineReport {
  * {@link StepResult}.  Throwing an exception from the action is safe —
  * {@link Pipeline.run} will catch it and produce a failure result.
  */
-export type StepAction = (context: Record<string, unknown>) => StepResult;
+export type StepAction = (context: Record<string, unknown>) => StepResult | Promise<StepResult>;
 
 /**
  * A named, executable unit of work within a {@link Pipeline}.
@@ -148,7 +148,7 @@ export class PipelineStep {
    * @param context - Shared mutable context object passed across all steps.
    * @returns The {@link StepResult} produced by the action.
    */
-  run(context: Record<string, unknown>): StepResult {
+  run(context: Record<string, unknown>): StepResult | Promise<StepResult> {
     return this._action(context);
   }
 }
@@ -264,7 +264,7 @@ export abstract class Pipeline {
    *   is reserved and will be written by the pipeline.
    * @returns A {@link PipelineReport} with the outcome of every step that ran.
    */
-  run(context: Record<string, unknown>): PipelineReport {
+  async run(context: Record<string, unknown>): Promise<PipelineReport> {
     const results: StepResult[] = [];
 
     // Initialise the results map in the context so steps can inspect it.
@@ -296,7 +296,7 @@ export abstract class Pipeline {
       let result: StepResult;
 
       try {
-        result = step.run(context);
+        result = await step.run(context);
       } catch (err: unknown) {
         const message =
           err instanceof Error ? err.message : String(err);

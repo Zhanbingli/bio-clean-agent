@@ -281,7 +281,7 @@ export class BioCleaningAgent {
    * @returns A {@link PipelineReport} for the completed run.
    * @throws {Error} When no pipeline is registered for the dataset type.
    */
-  run(request: AgentRequest, plan?: AgentPlan): PipelineReport {
+  async run(request: AgentRequest, plan?: AgentPlan): Promise<PipelineReport> {
     const agentPlan = plan ?? this.plan(request.dataset, request.output_dir, request.parameters);
 
     // Validate and load the dataset.
@@ -316,7 +316,7 @@ export class BioCleaningAgent {
       results: {},
     };
 
-    return pipeline.run(context);
+    return await pipeline.run(context);
   }
 
   // ------------------------------------------------------------------
@@ -417,7 +417,7 @@ export class BioCleaningAgent {
     }
 
     // Execute the pipeline.
-    const report = this.run(request, agentPlan);
+    const report = await this.run(request, agentPlan);
 
     return {
       plan: agentPlan,
