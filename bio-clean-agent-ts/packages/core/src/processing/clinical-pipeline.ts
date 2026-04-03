@@ -48,7 +48,9 @@ export class ClinicalTrialCleaningPipeline extends Pipeline {
     this.addStep(new PipelineStep("assess_quality_initial", "Initial Quality Assessment", (ctx) => this.assessQualityInitial(ctx as ClinicalPipelineContext)));
     this.addStep(new PipelineStep("detect_issues", "Detect Data Issues", (ctx) => this.detectIssuesStep(ctx as ClinicalPipelineContext)));
     this.addStep(new PipelineStep("clean_duplicates", "Clean Duplicates", (ctx) => this.cleanDuplicates(ctx as ClinicalPipelineContext)));
+    this.addStep(new PipelineStep("clean_outliers", "Clean Outliers", (ctx) => this.cleanOutliers(ctx as ClinicalPipelineContext)));
     this.addStep(new PipelineStep("handle_missing", "Handle Missing Values", (ctx) => this.handleMissing(ctx as ClinicalPipelineContext)));
+    this.addStep(new PipelineStep("flag_date_issues", "Flag Date Inconsistencies", (ctx) => this.flagDateIssues(ctx as ClinicalPipelineContext)));
     this.addStep(new PipelineStep("assess_quality_final", "Final Quality Assessment", (ctx) => this.assessQualityFinal(ctx as ClinicalPipelineContext)));
     this.addStep(new PipelineStep("save_results", "Save Results and Reports", (ctx) => this.saveResults(ctx as ClinicalPipelineContext)));
   }
@@ -138,19 +140,34 @@ export class ClinicalTrialCleaningPipeline extends Pipeline {
     }
   }
 
+  private cleanOutliers(_ctx: ClinicalPipelineContext): StepResult {
+    if (!this.handler) {
+      return { name: "clean_outliers", success: false, details: {}, error: "Handler not initialized" };
+    }
+    try {
+      const corrected = this.handler.cleanOutliers();
+      return { name: "clean_outliers", success: true, details: { corrected_count: corrected } };
+    } catch (e) {
+      return { name: "clean_outliers", success: false, details: {}, error: String(e) };
+    }
+  }
+
   private handleMissing(ctx: ClinicalPipelineContext): StepResult {
     if (!this.handler) {
       return { name: "handle_missing", success: false, details: {}, error: "Handler not initialized" };
     }
     try {
-      const defaultFields = ["systolic_bp", "diastolic_bp", "heart_rate", "temperature", "weight"];
       const userFields = ctx.parameters?.missing_value_fields as string[] | undefined;
-      const keyFields = userFields ?? defaultFields;
+
+      // Auto-detect: process all columns that have missing values
+      const data = this.handler.getData();
+      const allCols = data.length > 0 ? Object.keys(data[0]) : [];
+      const fieldsToProcess = userFields ?? allCols;
 
       const fieldDetails: Record<string, unknown> = {};
       let totalHandled = 0;
 
-      for (const field of keyFields) {
+      for (const field of fieldsToProcess) {
         try {
           const [affected, method] = this.handler.handleMissingValuesEvidenceBased(field, true);
           if (affected > 0) {
@@ -165,6 +182,18 @@ export class ClinicalTrialCleaningPipeline extends Pipeline {
       return { name: "handle_missing", success: true, details: { handled_count: totalHandled, field_details: fieldDetails } };
     } catch (e) {
       return { name: "handle_missing", success: false, details: {}, error: String(e) };
+    }
+  }
+
+  private flagDateIssues(_ctx: ClinicalPipelineContext): StepResult {
+    if (!this.handler) {
+      return { name: "flag_date_issues", success: false, details: {}, error: "Handler not initialized" };
+    }
+    try {
+      const flagged = this.handler.flagDateInconsistencies();
+      return { name: "flag_date_issues", success: true, details: { flagged_count: flagged } };
+    } catch (e) {
+      return { name: "flag_date_issues", success: false, details: {}, error: String(e) };
     }
   }
 

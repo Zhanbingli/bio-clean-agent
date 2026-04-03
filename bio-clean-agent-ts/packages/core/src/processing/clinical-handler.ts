@@ -465,15 +465,17 @@ export class EnhancedClinicalTrialHandler {
     }
 
     // 3. Vital signs range checks using MedicalStandards
-    const vitalFieldMap: Record<string, string[]> = {
-      systolic_bp: ["systolic_bp", "vital_signs"],
-      diastolic_bp: ["diastolic_bp", "vital_signs"],
-      heart_rate: ["heart_rate", "vital_signs"],
-      temperature: ["temperature", "vital_signs"],
-    };
+    // Maps knowledge-base tags → list of common column name variants
+    const vitalFieldMap: Array<{ tags: string[]; variants: string[] }> = [
+      { tags: ["systolic_bp", "vital_signs"], variants: ["systolic_bp", "blood_pressure_systolic", "bp_systolic", "sbp"] },
+      { tags: ["diastolic_bp", "vital_signs"], variants: ["diastolic_bp", "blood_pressure_diastolic", "bp_diastolic", "dbp"] },
+      { tags: ["heart_rate", "vital_signs"], variants: ["heart_rate", "hr", "pulse"] },
+      { tags: ["temperature", "vital_signs"], variants: ["temperature", "temp", "body_temperature", "body_temp"] },
+    ];
 
-    for (const [col, tags] of Object.entries(vitalFieldMap)) {
-      if (!cols.includes(col)) continue;
+    for (const { tags, variants } of vitalFieldMap) {
+      const col = variants.find((v) => cols.includes(v));
+      if (!col) continue;
       const nums = extractNumeric(this.data, col);
       if (nums.length === 0) continue;
 
@@ -503,6 +505,51 @@ export class EnhancedClinicalTrialHandler {
           evidence_statement: rangeEntry.statement,
           citation,
           recommendation: rangeEntry.rationale,
+        });
+      }
+    }
+
+    // 3b. Age range check
+    const ageCol = cols.find((c) => ["age", "patient_age"].includes(c));
+    if (ageCol) {
+      const ages = extractNumeric(this.data, ageCol);
+      const invalidAges = ages.filter((v) => v < 0 || v > 120);
+      if (invalidAges.length > 0) {
+        issues.push({
+          severity: "high",
+          category: "out_of_range",
+          field: ageCol,
+          message: `${invalidAges.length} age values outside valid range [0, 120]`,
+          count: invalidAges.length,
+          valid_range: [0, 120],
+          recommendation: "Review and correct invalid age values. Ages must be between 0 and 120.",
+        });
+      }
+    }
+
+    // 3c. Date consistency check (visit_date should be >= enrollment_date)
+    const enrollCol = cols.find((c) => ["enrollment_date", "enroll_date", "start_date"].includes(c));
+    const visitCol = cols.find((c) => ["visit_date", "assessment_date"].includes(c));
+    if (enrollCol && visitCol) {
+      let dateInconsistencies = 0;
+      for (const row of this.data) {
+        const enrollStr = String(row[enrollCol] ?? "");
+        const visitStr = String(row[visitCol] ?? "");
+        if (!enrollStr || !visitStr) continue;
+        const enrollDate = new Date(enrollStr);
+        const visitDate = new Date(visitStr);
+        if (!isNaN(enrollDate.getTime()) && !isNaN(visitDate.getTime()) && visitDate < enrollDate) {
+          dateInconsistencies++;
+        }
+      }
+      if (dateInconsistencies > 0) {
+        issues.push({
+          severity: "high",
+          category: "date_inconsistency",
+          field: `${enrollCol},${visitCol}`,
+          message: `${dateInconsistencies} records where ${visitCol} is before ${enrollCol}`,
+          count: dateInconsistencies,
+          recommendation: "Review date entries. Visit date should not precede enrollment date.",
         });
       }
     }
@@ -556,10 +603,11 @@ export class EnhancedClinicalTrialHandler {
   /**
    * Remove duplicate rows and record full lineage for every deleted cell.
    *
-   * Strategy:
-   * - If `patient_id` and `visit_date` columns are present, duplicates are
-   *   identified on that composite key.
-   * - Otherwise all columns are used for full-row comparison.
+   * Strategy (applied in order — both passes run):
+   * 1. Content-based: rows whose values are identical across ALL columns are
+   *    treated as exact duplicates (regardless of primary key).
+   * 2. Composite-key: if `patient_id` + `visit_date` exist, rows sharing the
+   *    same key pair are treated as logical duplicates.
    *
    * @param keep - Which occurrence to keep: `"first"` (default) or `"last"`.
    * @returns Number of rows removed.
@@ -569,29 +617,48 @@ export class EnhancedClinicalTrialHandler {
     this._requireData("cleanDuplicatesWithLineage");
 
     const cols = this.data.length > 0 ? Object.keys(this.data[0]) : [];
-    const useCompositeKey =
-      cols.includes("patient_id") && cols.includes("visit_date");
-
-    const seen = new Map<string, number>(); // sig → first index
     const toKeep: boolean[] = new Array(this.data.length).fill(true);
 
+    // Pass 1: content-based exact duplicate detection (all columns)
+    const contentSeen = new Map<string, number>();
     for (let i = 0; i < this.data.length; i++) {
       const row = this.data[i];
-      const sig = useCompositeKey
-        ? `${row["patient_id"]}::${row["visit_date"]}`
-        : JSON.stringify(row);
+      const sig = cols.map((c) => String(row[c] ?? "")).join("\0");
 
-      if (seen.has(sig)) {
+      if (contentSeen.has(sig)) {
         if (keep === "first") {
-          toKeep[i] = false; // remove this duplicate; keep the first
+          toKeep[i] = false;
         } else {
-          // keep === "last": mark the previously-seen one for removal
-          const prevIdx = seen.get(sig)!;
+          const prevIdx = contentSeen.get(sig)!;
           toKeep[prevIdx] = false;
-          seen.set(sig, i); // update to latest
+          contentSeen.set(sig, i);
         }
       } else {
-        seen.set(sig, i);
+        contentSeen.set(sig, i);
+      }
+    }
+
+    // Pass 2: composite-key duplicates (patient_id + visit_date)
+    const useCompositeKey =
+      cols.includes("patient_id") && cols.includes("visit_date");
+    if (useCompositeKey) {
+      const keySeen = new Map<string, number>();
+      for (let i = 0; i < this.data.length; i++) {
+        if (!toKeep[i]) continue; // already marked for removal
+        const row = this.data[i];
+        const sig = `${row["patient_id"]}::${row["visit_date"]}`;
+
+        if (keySeen.has(sig)) {
+          if (keep === "first") {
+            toKeep[i] = false;
+          } else {
+            const prevIdx = keySeen.get(sig)!;
+            toKeep[prevIdx] = false;
+            keySeen.set(sig, i);
+          }
+        } else {
+          keySeen.set(sig, i);
+        }
       }
     }
 
@@ -779,6 +846,170 @@ export class EnhancedClinicalTrialHandler {
     );
 
     return [affected, strategy, methodEvidenceId];
+  }
+
+  // -------------------------------------------------------------------------
+  // Cleaning: outliers
+  // -------------------------------------------------------------------------
+
+  /**
+   * Flag or cap outlier values in numeric columns based on medical reference
+   * ranges or IQR fencing.
+   *
+   * Strategy per column:
+   * - If a medical reference range exists (e.g. age 0–120), values outside the
+   *   range are set to `null` (flagged for review).
+   * - Otherwise, Tukey IQR fencing (1.5×IQR) is used; extreme outliers are
+   *   capped to the fence boundaries.
+   *
+   * @returns Number of values corrected.
+   */
+  cleanOutliers(): number {
+    this._requireData("cleanOutliers");
+
+    const cols = this.data.length > 0 ? Object.keys(this.data[0]) : [];
+    const timestamp = new Date().toISOString();
+    let corrected = 0;
+
+    // Physiologically impossible ranges — values outside these are data errors,
+    // not clinical abnormalities.  These are deliberately wide.
+    const knownRanges: Record<string, [number, number]> = {
+      age: [0, 120], patient_age: [0, 120],
+      // Blood pressure: physiologically impossible outside these bounds
+      systolic_bp: [30, 300], blood_pressure_systolic: [30, 300], bp_systolic: [30, 300], sbp: [30, 300],
+      diastolic_bp: [10, 200], blood_pressure_diastolic: [10, 200], bp_diastolic: [10, 200], dbp: [10, 200],
+      // Heart rate
+      heart_rate: [15, 250], hr: [15, 250], pulse: [15, 250],
+      // Temperature (°C)
+      temperature: [25, 45], temp: [25, 45], body_temperature: [25, 45], body_temp: [25, 45],
+      // Weight (kg)
+      weight_kg: [0.3, 500], weight: [0.3, 500],
+      // Height (cm)
+      height_cm: [20, 280], height: [20, 280],
+    };
+
+    for (const col of cols) {
+      if (columnType(this.data, col) !== "numeric") continue;
+
+      const range = knownRanges[col];
+      if (range) {
+        // Medical-range based cleaning
+        const [minVal, maxVal] = range;
+        for (const row of this.data) {
+          const v = row[col];
+          if (!isNumericValue(v)) continue;
+          if (v < minVal || v > maxVal) {
+            const recordId = cols.includes("patient_id")
+              ? String(row["patient_id"] ?? "unknown")
+              : "unknown";
+            this.dataLineage.push(DataLineageSchema.parse({
+              record_id: recordId,
+              field_name: col,
+              original_value: v,
+              new_value: null,
+              operation: "correction",
+              timestamp,
+              evidence_id: "outlier_medical_range",
+            }));
+            row[col] = null;
+            corrected++;
+          }
+        }
+      } else {
+        // IQR fencing for columns without known ranges
+        const nums = extractNumeric(this.data, col);
+        if (nums.length < 4) continue;
+        const sorted = [...nums].sort((a, b) => a - b);
+        const q1 = ss.quantile(sorted, 0.25);
+        const q3 = ss.quantile(sorted, 0.75);
+        const iqr = q3 - q1;
+        if (iqr === 0) continue;
+        const lowerFence = q1 - 3 * iqr; // Use 3×IQR for extreme outliers only
+        const upperFence = q3 + 3 * iqr;
+
+        for (const row of this.data) {
+          const v = row[col];
+          if (!isNumericValue(v)) continue;
+          if (v < lowerFence || v > upperFence) {
+            const recordId = cols.includes("patient_id")
+              ? String(row["patient_id"] ?? "unknown")
+              : "unknown";
+            const capped = v < lowerFence ? lowerFence : upperFence;
+            this.dataLineage.push(DataLineageSchema.parse({
+              record_id: recordId,
+              field_name: col,
+              original_value: v,
+              new_value: capped,
+              operation: "correction",
+              timestamp,
+              evidence_id: "outlier_iqr_fence",
+            }));
+            row[col] = capped;
+            corrected++;
+          }
+        }
+      }
+    }
+
+    this._addAuditEntry(
+      "correction",
+      "Outlier values cleaned",
+      corrected,
+      { method: "medical_range_and_iqr" },
+      undefined,
+      "Values outside medical reference ranges nullified; extreme IQR outliers capped."
+    );
+
+    return corrected;
+  }
+
+  // -------------------------------------------------------------------------
+  // Cleaning: date consistency
+  // -------------------------------------------------------------------------
+
+  /**
+   * Flag records with date inconsistencies (e.g. visit_date before enrollment_date).
+   * Adds a `date_inconsistency_flag` column.
+   *
+   * @returns Number of records flagged.
+   */
+  flagDateInconsistencies(): number {
+    this._requireData("flagDateInconsistencies");
+
+    const cols = this.data.length > 0 ? Object.keys(this.data[0]) : [];
+    const enrollCol = cols.find((c) => ["enrollment_date", "enroll_date", "start_date"].includes(c));
+    const visitCol = cols.find((c) => ["visit_date", "assessment_date"].includes(c));
+
+    if (!enrollCol || !visitCol) return 0;
+
+    let flagged = 0;
+    for (const row of this.data) {
+      const enrollStr = String(row[enrollCol] ?? "");
+      const visitStr = String(row[visitCol] ?? "");
+      if (!enrollStr || !visitStr) {
+        row["date_inconsistency_flag"] = false;
+        continue;
+      }
+      const enrollDate = new Date(enrollStr);
+      const visitDate = new Date(visitStr);
+      const inconsistent =
+        !isNaN(enrollDate.getTime()) &&
+        !isNaN(visitDate.getTime()) &&
+        visitDate < enrollDate;
+      row["date_inconsistency_flag"] = inconsistent;
+      if (inconsistent) flagged++;
+    }
+
+    this._addAuditEntry(
+      "validation",
+      `Flagged date inconsistencies (${visitCol} < ${enrollCol})`,
+      flagged,
+      { enrollment_column: enrollCol, visit_column: visitCol },
+      undefined,
+      "Records where visit date precedes enrollment date have been flagged for review."
+    );
+
+    return flagged;
   }
 
   // -------------------------------------------------------------------------

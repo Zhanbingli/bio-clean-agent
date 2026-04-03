@@ -23,7 +23,7 @@ import { z } from "zod";
  * | `flagging`       | Records are annotated but not modified                |
  */
 export const OperationTypeSchema = z
-  .enum(["validation", "deletion", "imputation", "transformation", "flagging"])
+  .enum(["validation", "deletion", "imputation", "transformation", "flagging", "correction"])
   .describe("Category of data operation captured in the audit trail");
 
 export type OperationType = z.infer<typeof OperationTypeSchema>;
